@@ -25,6 +25,7 @@
     <section class="view" id="heroView">
       <article class="hero-cover" id="heroCover">
         <div class="character-stage" id="characterStage">
+          <canvas class="three-character" id="threeCharacter" aria-hidden="true"></canvas>
           <div class="stage-floor"></div>
           <div class="aura-ring aura-ring-one"></div>
           <div class="aura-ring aura-ring-two"></div>
@@ -78,7 +79,7 @@
           <strong id="workouts">0</strong>
         </article>
         <article>
-          <span>Подходы</span>
+          <span>Подх.</span>
           <strong id="sets">0</strong>
         </article>
       </section>
@@ -107,6 +108,9 @@
         <form id="setForm" class="set-form">
           <label>
             <span>Упражнение</span>
+            <select id="exerciseSelect">
+              <option value="">Выбрать из списка</option>
+            </select>
             <input name="exercise" autocomplete="off" placeholder="Жим лежа">
           </label>
           <div class="form-grid">
@@ -121,6 +125,25 @@
           </div>
           <button type="submit">Добавить подход</button>
         </form>
+      </section>
+
+      <section class="rpg-card">
+        <div class="section-heading">
+          <h2>Личный план</h2>
+          <span id="planReward">+80 / -40 XP</span>
+        </div>
+        <div class="plan-builder">
+          <select id="planExerciseSelect"></select>
+          <button class="ghost-button" id="addPlanExercise" type="button">Добавить</button>
+        </div>
+        <div class="plan-list" id="trainingPlan"></div>
+        <div class="plan-actions">
+          <button class="start-button" id="completePlan" type="button">
+            <span>План выполнен</span>
+            <small>Получить XP</small>
+          </button>
+          <button class="danger-button" id="failPlan" type="button">Не выполнил</button>
+        </div>
       </section>
 
       <section class="rpg-card">
@@ -195,7 +218,7 @@
     <button class="nav-tab is-active" data-view="hero" type="button">Герой</button>
     <button class="nav-tab" data-view="training" type="button">Прокачка</button>
     <button class="nav-tab" data-view="rating" type="button">Рейтинг</button>
-    <button class="nav-tab" data-view="account" type="button">Аккаунт</button>
+    <button class="nav-tab" data-view="account" type="button">Акк</button>
   </nav>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

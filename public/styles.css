@@ -1,16 +1,16 @@
 :root {
   color-scheme: dark;
-  --bg: #080b14;
-  --panel: #121827;
-  --panel-strong: #182236;
-  --line: rgba(255, 255, 255, 0.12);
-  --text: #f6f8fc;
-  --muted: #a9b4c8;
-  --accent: #42d7ff;
-  --accent-2: #7a7cff;
-  --green: #48e0a4;
-  --red: #ff5d76;
-  --gold: #f8c75c;
+  --bg: #050914;
+  --panel: #0b1324;
+  --panel-strong: #101a30;
+  --line: rgba(126, 163, 220, 0.18);
+  --text: #f2f7ff;
+  --muted: #8fa2c3;
+  --accent: #4f9cff;
+  --accent-2: #5b6dff;
+  --green: #3aaed8;
+  --red: #6b7896;
+  --gold: #78a8ff;
   --radius: 8px;
 }
 
@@ -20,18 +20,20 @@
 
 body {
   margin: 0;
+  overflow-x: hidden;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 12% 0%, rgba(66, 215, 255, 0.18), transparent 21rem),
-    radial-gradient(circle at 90% 12%, rgba(255, 93, 118, 0.14), transparent 22rem),
-    linear-gradient(180deg, #0d1220, var(--bg) 42%);
+    radial-gradient(circle at 12% 0%, rgba(79, 156, 255, 0.16), transparent 21rem),
+    radial-gradient(circle at 90% 12%, rgba(39, 66, 116, 0.2), transparent 22rem),
+    linear-gradient(180deg, #09111f, var(--bg) 42%);
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -56,7 +58,8 @@ h2 {
 }
 
 .app-shell {
-  width: min(100%, 31rem);
+  width: 100vw;
+  max-width: 31rem;
   margin: 0 auto;
   padding: max(1rem, env(safe-area-inset-top)) 1rem calc(6rem + env(safe-area-inset-bottom));
 }
@@ -124,7 +127,7 @@ body.is-choosing .app-shell {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   color: var(--text);
-  background: rgba(255, 255, 255, 0.055);
+  background: rgba(9, 19, 36, 0.82);
   text-align: left;
   overflow: hidden;
 }
@@ -202,20 +205,31 @@ body.is-choosing .app-shell {
   --muscle-size: 0.35rem;
   --muscle-opacity: 0.2;
   background:
-    radial-gradient(circle at 50% 28%, rgba(66, 215, 255, var(--aura-opacity)), transparent 13rem),
-    linear-gradient(180deg, #171e31, #080b14 75%);
+    radial-gradient(circle at 50% 28%, rgba(79, 156, 255, var(--aura-opacity)), transparent 13rem),
+    linear-gradient(180deg, #101a2c, #050914 75%);
 }
 
 .character-stage[data-theme="iron"] {
   background:
-    radial-gradient(circle at 54% 28%, rgba(72, 224, 164, var(--aura-opacity)), transparent 13rem),
-    linear-gradient(180deg, #172333, #080b14 75%);
+    radial-gradient(circle at 54% 28%, rgba(58, 174, 216, var(--aura-opacity)), transparent 13rem),
+    linear-gradient(180deg, #102033, #050914 75%);
 }
 
 .character-stage[data-theme="power"] {
   background:
-    radial-gradient(circle at 48% 28%, rgba(255, 93, 118, var(--aura-opacity)), transparent 13rem),
-    linear-gradient(180deg, #24172f, #080b14 75%);
+    radial-gradient(circle at 48% 28%, rgba(91, 109, 255, var(--aura-opacity)), transparent 13rem),
+    linear-gradient(180deg, #15172d, #050914 75%);
+}
+
+.three-character {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
+  opacity: 0.46;
+  pointer-events: none;
+  mix-blend-mode: screen;
 }
 
 .stage-floor {
@@ -225,17 +239,18 @@ body.is-choosing .app-shell {
   bottom: 4.2rem;
   height: 6rem;
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(66, 215, 255, 0.32), rgba(66, 215, 255, 0.03) 62%, transparent 70%);
+  z-index: 2;
+  background: radial-gradient(ellipse, rgba(79, 156, 255, 0.32), rgba(79, 156, 255, 0.03) 62%, transparent 70%);
   transform: rotateX(68deg);
   animation: floorPulse 3.4s ease-in-out infinite;
 }
 
 .character-stage[data-theme="iron"] .stage-floor {
-  background: radial-gradient(ellipse, rgba(72, 224, 164, 0.32), rgba(72, 224, 164, 0.03) 62%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(58, 174, 216, 0.32), rgba(58, 174, 216, 0.03) 62%, transparent 70%);
 }
 
 .character-stage[data-theme="power"] .stage-floor {
-  background: radial-gradient(ellipse, rgba(255, 93, 118, 0.32), rgba(255, 93, 118, 0.03) 62%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(91, 109, 255, 0.32), rgba(91, 109, 255, 0.03) 62%, transparent 70%);
 }
 
 .aura-ring {
@@ -244,7 +259,8 @@ body.is-choosing .app-shell {
   top: 42%;
   width: calc(11rem + var(--aura-size));
   height: calc(15rem + var(--aura-size));
-  border: 2px solid rgba(66, 215, 255, 0.34);
+  z-index: 2;
+  border: 2px solid rgba(79, 156, 255, 0.34);
   border-radius: 50%;
   filter: blur(0.2px);
   transform: translate(-50%, -50%) rotateY(58deg) rotateZ(-8deg);
@@ -276,6 +292,7 @@ body.is-choosing .app-shell {
   transform: translate(-50%, -50%) rotateY(var(--hero-rotate)) rotateX(3deg) scale(var(--hero-scale));
   transform-style: preserve-3d;
   animation: characterBreathe 4.2s ease-in-out infinite;
+  z-index: 3;
 }
 
 .character-model img {
@@ -308,7 +325,7 @@ body.is-choosing .app-shell {
   height: calc(1.8rem + var(--armor-height));
   border-radius: 999px;
   background: linear-gradient(90deg, transparent, rgba(66, 215, 255, 0.9), rgba(248, 199, 92, 0.85), transparent);
-  box-shadow: 0 0 var(--aura-glow) rgba(66, 215, 255, 0.52);
+  box-shadow: 0 0 var(--aura-glow) rgba(79, 156, 255, 0.52);
 }
 
 .armor-core {
@@ -318,7 +335,7 @@ body.is-choosing .app-shell {
   height: calc(5.4rem + var(--armor-height));
   border: 2px solid rgba(255, 255, 255, 0.28);
   border-radius: 34% 34% 18% 18%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(66, 215, 255, 0.18));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(79, 156, 255, 0.18));
 }
 
 .armor-belt {
@@ -327,7 +344,7 @@ body.is-choosing .app-shell {
   top: 64%;
   height: calc(0.85rem + var(--armor-height));
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(248, 199, 92, 0.95), rgba(255, 93, 118, 0.75));
+  background: linear-gradient(90deg, rgba(79, 156, 255, 0.95), rgba(91, 109, 255, 0.75));
 }
 
 .muscle-boost {
@@ -335,7 +352,7 @@ body.is-choosing .app-shell {
   width: calc(2.2rem + var(--muscle-size));
   height: calc(5rem + var(--muscle-size));
   border-radius: 999px;
-  background: radial-gradient(ellipse, rgba(255, 255, 255, 0.34), rgba(72, 224, 164, 0.2) 52%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(255, 255, 255, 0.34), rgba(79, 156, 255, 0.2) 52%, transparent 70%);
   opacity: var(--muscle-opacity);
 }
 
@@ -355,21 +372,21 @@ body.is-choosing .app-shell {
   width: 0.34rem;
   height: calc(4rem + var(--aura-size));
   border-radius: 999px;
-  background: linear-gradient(180deg, transparent, rgba(66, 215, 255, 0.9), transparent);
-  box-shadow: 0 0 1rem rgba(66, 215, 255, 0.8);
+  background: linear-gradient(180deg, transparent, rgba(79, 156, 255, 0.9), transparent);
+  box-shadow: 0 0 1rem rgba(79, 156, 255, 0.8);
   animation: bladePulse 2.8s ease-in-out infinite;
 }
 
 .character-stage[data-theme="iron"] .armor-shoulders,
 .character-stage[data-theme="iron"] .power-blade {
-  background: linear-gradient(90deg, transparent, rgba(72, 224, 164, 0.9), rgba(248, 199, 92, 0.8), transparent);
-  box-shadow: 0 0 var(--aura-glow) rgba(72, 224, 164, 0.52);
+  background: linear-gradient(90deg, transparent, rgba(58, 174, 216, 0.9), rgba(120, 168, 255, 0.8), transparent);
+  box-shadow: 0 0 var(--aura-glow) rgba(58, 174, 216, 0.52);
 }
 
 .character-stage[data-theme="power"] .armor-shoulders,
 .character-stage[data-theme="power"] .power-blade {
-  background: linear-gradient(90deg, transparent, rgba(255, 93, 118, 0.92), rgba(248, 199, 92, 0.82), transparent);
-  box-shadow: 0 0 var(--aura-glow) rgba(255, 93, 118, 0.52);
+  background: linear-gradient(90deg, transparent, rgba(91, 109, 255, 0.92), rgba(120, 168, 255, 0.82), transparent);
+  box-shadow: 0 0 var(--aura-glow) rgba(91, 109, 255, 0.52);
 }
 
 .character-model[data-armor="1"] .armor-core,
@@ -393,11 +410,13 @@ body.is-choosing .app-shell {
   background: rgba(0, 0, 0, 0.46);
   filter: blur(0.8rem);
   animation: shadowBreathe 4.2s ease-in-out infinite;
+  z-index: 2;
 }
 
 .hero-cover-gradient {
   position: absolute;
   inset: 0;
+  z-index: 5;
   background:
     linear-gradient(180deg, rgba(8, 11, 20, 0.03), rgba(8, 11, 20, 0.18) 48%, rgba(8, 11, 20, 0.98)),
     linear-gradient(90deg, rgba(8, 11, 20, 0.76), transparent 62%);
@@ -408,6 +427,7 @@ body.is-choosing .app-shell {
   left: 1rem;
   right: 1rem;
   bottom: 1rem;
+  z-index: 6;
   text-shadow: 0 0.15rem 0.8rem rgba(0, 0, 0, 0.65);
 }
 
@@ -519,11 +539,11 @@ label span {
 
 .action-card {
   display: grid;
-  grid-template-columns: 1fr 7rem;
+  grid-template-columns: minmax(0, 1fr) 6rem;
   gap: 0.75rem;
   background:
-    linear-gradient(135deg, rgba(72, 224, 164, 0.12), rgba(66, 215, 255, 0.08)),
-    rgba(255, 255, 255, 0.04);
+    linear-gradient(135deg, rgba(18, 41, 71, 0.88), rgba(9, 19, 36, 0.9)),
+    rgba(5, 12, 25, 0.88);
 }
 
 .start-button,
@@ -535,12 +555,13 @@ label span {
 
 .start-button {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   padding: 0.85rem 1rem;
-  color: #03110d;
-  background: linear-gradient(135deg, var(--green), var(--accent));
+  color: #eaf4ff;
+  background: linear-gradient(135deg, #122947, #174a7b);
   font-weight: 900;
 }
 
@@ -552,8 +573,17 @@ label span {
 
 .ghost-button {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(14, 31, 56, 0.92);
   border: 1px solid var(--line);
+}
+
+.danger-button {
+  min-height: 3.35rem;
+  border-radius: var(--radius);
+  color: #dce9ff;
+  background: #172033;
+  border: 1px solid rgba(126, 163, 220, 0.2);
+  font-weight: 900;
 }
 
 .set-form {
@@ -562,23 +592,33 @@ label span {
   margin-top: 1rem;
 }
 
+.plan-builder,
+.plan-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6rem;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 label {
   display: grid;
   gap: 0.4rem;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-height: 3.15rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 0 0.9rem;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(5, 12, 25, 0.78);
   color: var(--text);
   outline: none;
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: rgba(66, 215, 255, 0.8);
 }
 
@@ -594,8 +634,8 @@ input:focus {
 }
 
 .set-form button {
-  color: #080b14;
-  background: linear-gradient(135deg, var(--gold), var(--red));
+  color: #eaf4ff;
+  background: linear-gradient(135deg, #173256, #1c5a91);
   font-weight: 900;
 }
 
@@ -618,22 +658,23 @@ input:focus {
 }
 
 .attribute.strength {
-  background: linear-gradient(135deg, rgba(255, 93, 118, 0.24), rgba(255, 93, 118, 0.05));
+  background: linear-gradient(135deg, rgba(79, 156, 255, 0.22), rgba(79, 156, 255, 0.05));
 }
 
 .attribute.discipline {
-  background: linear-gradient(135deg, rgba(66, 215, 255, 0.22), rgba(66, 215, 255, 0.05));
+  background: linear-gradient(135deg, rgba(91, 109, 255, 0.18), rgba(91, 109, 255, 0.05));
 }
 
 .attribute.endurance {
-  background: linear-gradient(135deg, rgba(72, 224, 164, 0.22), rgba(72, 224, 164, 0.05));
+  background: linear-gradient(135deg, rgba(58, 174, 216, 0.18), rgba(58, 174, 216, 0.05));
 }
 
 .loadout-list,
 .quest-list,
 .item-list,
 .leader-list,
-.evolution-list {
+.evolution-list,
+.plan-list {
   display: grid;
   gap: 0.7rem;
   margin-top: 1rem;
@@ -694,6 +735,41 @@ input:focus {
   font-size: 0.88rem;
 }
 
+.plan-item {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  min-height: 3rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(126, 163, 220, 0.16);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: rgba(8, 18, 34, 0.92);
+  text-align: left;
+}
+
+.plan-item span {
+  display: grid;
+  place-items: center;
+  min-height: 2rem;
+  border-radius: 6px;
+  background: rgba(79, 156, 255, 0.12);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.plan-item.is-done {
+  border-color: rgba(79, 156, 255, 0.48);
+  background: rgba(23, 74, 123, 0.36);
+}
+
+.plan-item.is-done span {
+  color: #eaf4ff;
+  background: #174a7b;
+}
+
 .milestone {
   margin-top: 1rem;
 }
@@ -711,8 +787,8 @@ input:focus {
 }
 
 .quest.is-done {
-  border: 1px solid rgba(72, 224, 164, 0.34);
-  background: rgba(72, 224, 164, 0.08);
+  border: 1px solid rgba(79, 156, 255, 0.42);
+  background: rgba(79, 156, 255, 0.1);
 }
 
 .quest strong,
@@ -729,7 +805,7 @@ input:focus {
 .rating-summary {
   padding: 0.9rem;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, rgba(248, 199, 92, 0.16), rgba(66, 215, 255, 0.08));
+  background: linear-gradient(135deg, rgba(79, 156, 255, 0.16), rgba(18, 41, 71, 0.35));
   color: var(--text);
   font-weight: 800;
 }
@@ -755,8 +831,8 @@ input:focus {
   place-items: center;
   min-height: 2.15rem;
   border-radius: 6px;
-  color: #15100a;
-  background: var(--gold);
+  color: #eaf4ff;
+  background: #174a7b;
   font-weight: 900;
   font-size: 0.78rem;
 }
@@ -788,7 +864,7 @@ input:focus {
   border-radius: 6px;
   color: var(--muted);
   background: transparent;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 800;
 }
 
@@ -804,8 +880,8 @@ input:focus {
   right: auto;
   bottom: max(0.75rem, env(safe-area-inset-bottom));
   z-index: 20;
-  width: calc(100vw - 1.5rem);
-  max-width: 29.5rem;
+  width: 20rem;
+  max-width: calc(100vw - 1.5rem);
   grid-template-columns: repeat(4, minmax(0, 1fr));
   transform: translateX(-50%);
   background: rgba(11, 16, 29, 0.9);

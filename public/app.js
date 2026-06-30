@@ -3,9 +3,11 @@ tg?.ready();
 tg?.expand();
 
 let state = null;
-let activeView = 'hero';
+const initialView = new URLSearchParams(window.location.search).get('view');
+let activeView = ['hero', 'training', 'rating', 'account'].includes(initialView) ? initialView : 'hero';
 let activePanel = 'prs';
 let leaderboard = null;
+let threeScene = null;
 const initData = tg?.initData || '';
 const devUser = new URLSearchParams(window.location.search).get('devUser');
 
@@ -16,6 +18,7 @@ const els = {
   ratingView: document.getElementById('ratingView'),
   accountView: document.getElementById('accountView'),
   bottomNav: document.getElementById('bottomNav'),
+  threeCharacter: document.getElementById('threeCharacter'),
   heroCover: document.getElementById('heroCover'),
   characterStage: document.getElementById('characterStage'),
   characterModel: document.getElementById('characterModel'),
@@ -44,6 +47,13 @@ const els = {
   finishWorkout: document.getElementById('finishWorkout'),
   workoutStatus: document.getElementById('workoutStatus'),
   setForm: document.getElementById('setForm'),
+  exerciseSelect: document.getElementById('exerciseSelect'),
+  planExerciseSelect: document.getElementById('planExerciseSelect'),
+  addPlanExercise: document.getElementById('addPlanExercise'),
+  trainingPlan: document.getElementById('trainingPlan'),
+  completePlan: document.getElementById('completePlan'),
+  failPlan: document.getElementById('failPlan'),
+  planReward: document.getElementById('planReward'),
   streak: document.getElementById('streak'),
   workouts: document.getElementById('workouts'),
   sets: document.getElementById('sets'),
@@ -85,6 +95,7 @@ function render(nextState) {
   const xpPercent = Math.min(100, Math.round((profile.xpInLevel / profile.nextLevelXp) * 100));
 
   renderHeroChoices(hero);
+  renderExerciseSelects();
   const needsChoice = hero.choiceRequired;
   document.body.classList.toggle('is-choosing', needsChoice);
   els.choiceView.classList.toggle('is-active', needsChoice);
@@ -124,6 +135,8 @@ function render(nextState) {
   els.loadout.innerHTML = hero.loadout.map(loadoutTemplate).join('');
   els.nextMilestone.textContent = hero.nextMilestone;
   els.evolutionList.innerHTML = hero.visual.unlocked.map(evolutionTemplate).join('');
+  renderTrainingPlan();
+  updateThreeCharacter(hero);
   renderRating();
   renderAccountPanel();
 }
@@ -198,6 +211,111 @@ function evolutionTemplate(item, index) {
       <strong>${escapeHtml(item)}</strong>
     </div>
   `;
+}
+
+function renderExerciseSelects() {
+  const options = ['<option value="">Выбрать из списка</option>']
+    .concat(state.exerciseCatalog.map((exercise) => `<option value="${escapeHtml(exercise)}">${escapeHtml(exercise)}</option>`))
+    .join('');
+  els.exerciseSelect.innerHTML = options;
+  els.planExerciseSelect.innerHTML = state.exerciseCatalog
+    .map((exercise) => `<option value="${escapeHtml(exercise)}">${escapeHtml(exercise)}</option>`)
+    .join('');
+}
+
+function renderTrainingPlan() {
+  const plan = state.trainingPlan;
+  els.planReward.textContent = `+${plan.completeXp} / -${plan.failXp} XP`;
+
+  if (!plan.items.length) {
+    els.trainingPlan.innerHTML = '<p class="empty">Добавь упражнения в личный план. Потом закрывай их по одному и получай XP за полный план.</p>';
+  } else {
+    els.trainingPlan.innerHTML = plan.items.map((item) => `
+      <button class="plan-item ${item.done ? 'is-done' : ''}" data-plan-exercise="${escapeHtml(item.exercise)}" data-plan-done="${item.done ? '0' : '1'}" type="button">
+        <span>${item.done ? 'DONE' : 'TODO'}</span>
+        <strong>${escapeHtml(item.exercise)}</strong>
+      </button>
+    `).join('');
+  }
+
+  els.trainingPlan.querySelectorAll('[data-plan-exercise]').forEach((button) => {
+    button.addEventListener('click', () => togglePlanExercise(button.dataset.planExercise, button.dataset.planDone === '1'));
+  });
+}
+
+async function ensureThreeScene() {
+  if (threeScene) return threeScene;
+  try {
+    const THREE = await import('https://unpkg.com/three@0.165.0/build/three.module.js');
+    const renderer = new THREE.WebGLRenderer({ canvas: els.threeCharacter, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+    camera.position.set(0, 1.2, 5.2);
+    scene.add(new THREE.HemisphereLight(0xd9f2ff, 0x07101c, 2.4));
+    const keyLight = new THREE.DirectionalLight(0x7cc8ff, 3);
+    keyLight.position.set(2.8, 4.5, 3.2);
+    scene.add(keyLight);
+
+    const group = new THREE.Group();
+    scene.add(group);
+    const material = new THREE.MeshStandardMaterial({ color: 0x2f74ff, metalness: 0.18, roughness: 0.38 });
+    const armor = new THREE.MeshStandardMaterial({ color: 0x12274a, metalness: 0.68, roughness: 0.24 });
+    const aura = new THREE.MeshBasicMaterial({ color: 0x35d8ff, transparent: true, opacity: 0.22, wireframe: true });
+    group.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 1.35, 8, 18), material));
+    group.add(new THREE.Mesh(new THREE.SphereGeometry(0.38, 24, 16), material));
+    group.children[1].position.y = 1.12;
+    const shoulder = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.16, 0.32), armor);
+    shoulder.position.y = 0.58;
+    group.add(shoulder);
+    const core = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, 0.58, 6), armor);
+    core.position.y = 0.05;
+    group.add(core);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.012, 8, 64), aura);
+    ring.rotation.x = Math.PI / 2;
+    group.add(ring);
+
+    threeScene = { THREE, renderer, scene, camera, group, material, armor, aura, ring };
+    resizeThreeScene();
+    window.addEventListener('resize', resizeThreeScene);
+    animateThreeScene();
+  } catch {
+    els.threeCharacter.hidden = true;
+  }
+  return threeScene;
+}
+
+function resizeThreeScene() {
+  if (!threeScene) return;
+  const rect = els.threeCharacter.getBoundingClientRect();
+  threeScene.renderer.setSize(rect.width, rect.height, false);
+  threeScene.camera.aspect = rect.width / Math.max(1, rect.height);
+  threeScene.camera.updateProjectionMatrix();
+}
+
+function animateThreeScene() {
+  if (!threeScene) return;
+  const tick = performance.now() / 1000;
+  threeScene.group.rotation.y = Math.sin(tick * 0.8) * 0.28;
+  threeScene.group.position.y = Math.sin(tick * 1.4) * 0.05;
+  threeScene.ring.rotation.z = tick * 0.7;
+  threeScene.renderer.render(threeScene.scene, threeScene.camera);
+  requestAnimationFrame(animateThreeScene);
+}
+
+async function updateThreeCharacter(hero) {
+  const scene = await ensureThreeScene();
+  if (!scene) return;
+  const colors = {
+    storm: [0x39d8ff, 0x133d8d, 0x7edfff],
+    iron: [0x41e3a5, 0x123a4b, 0x8ef6c8],
+    power: [0xff5d76, 0x3f1b3d, 0xffa4b6]
+  }[hero.visual.theme] || [0x39d8ff, 0x133d8d, 0x7edfff];
+  scene.material.color.setHex(colors[0]);
+  scene.armor.color.setHex(colors[1]);
+  scene.aura.color.setHex(colors[2]);
+  scene.group.scale.setScalar(0.9 + hero.visual.muscleLevel * 0.05);
+  scene.ring.scale.setScalar(0.85 + hero.visual.auraLevel * 0.12);
 }
 
 function showView(view) {
@@ -334,6 +452,58 @@ els.startWorkout.addEventListener('click', async () => {
   leaderboard = null;
   tg?.HapticFeedback?.impactOccurred('medium');
   showToast('Тренировка начата');
+});
+
+els.exerciseSelect.addEventListener('change', () => {
+  if (els.exerciseSelect.value) {
+    els.setForm.elements.exercise.value = els.exerciseSelect.value;
+  }
+});
+
+els.addPlanExercise.addEventListener('click', async () => {
+  try {
+    render(await api('/api/plan/add', {
+      method: 'POST',
+      body: JSON.stringify({ exercise: els.planExerciseSelect.value })
+    }));
+    showToast('Упражнение добавлено в план');
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+async function togglePlanExercise(exercise, done) {
+  try {
+    render(await api('/api/plan/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ exercise, done })
+    }));
+    tg?.HapticFeedback?.impactOccurred('light');
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+els.completePlan.addEventListener('click', async () => {
+  try {
+    const response = await api('/api/plan/complete', { method: 'POST' });
+    render(response.state);
+    leaderboard = null;
+    showToast(response.result.alreadyCompleted ? 'План уже закрыт сегодня' : `План закрыт: +${response.result.xp} XP`);
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+els.failPlan.addEventListener('click', async () => {
+  try {
+    const response = await api('/api/plan/fail', { method: 'POST' });
+    render(response.state);
+    leaderboard = null;
+    showToast(response.result.alreadyFailed ? 'Штраф уже был сегодня' : `План провален: -${response.result.xp} XP`);
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
 els.finishWorkout.addEventListener('click', async () => {

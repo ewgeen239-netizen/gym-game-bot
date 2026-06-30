@@ -10,6 +10,23 @@ const APP_URL = process.env.APP_URL || '';
 const DATA_FILE = process.env.DATA_FILE || './data/gym-game-bot.json';
 const PORT = Number(process.env.PORT || 3000);
 const LEVEL_STEP = 200;
+const PLAN_COMPLETE_XP = 80;
+const PLAN_FAIL_XP = 40;
+
+const EXERCISE_CATALOG = [
+  'Жим лежа',
+  'Приседания',
+  'Становая тяга',
+  'Жим гантелей',
+  'Тяга верхнего блока',
+  'Тяга штанги в наклоне',
+  'Подтягивания',
+  'Отжимания',
+  'Жим ногами',
+  'Сгибание рук',
+  'Разгибание рук',
+  'Планка'
+];
 
 if (!BOT_TOKEN) {
   console.error('Missing BOT_TOKEN. Add it to .env or Railway variables.');
@@ -95,13 +112,15 @@ function getUserByTelegram(telegramUser) {
       prs: {},
       achievements: [],
       workouts: [],
-      daily: {}
+      daily: {},
+      trainingPlan: { items: [], completedDates: [], failedDates: [] }
     };
   } else {
     db.users[id].name = telegramUser.name || db.users[id].name;
     db.users[id].username = telegramUser.username || db.users[id].username || '';
     db.users[id].photoUrl = telegramUser.photoUrl || db.users[id].photoUrl || '';
     db.users[id].heroType = db.users[id].heroType || '';
+    db.users[id].trainingPlan = normalizeTrainingPlan(db.users[id].trainingPlan);
   }
   return db.users[id];
 }
@@ -119,6 +138,13 @@ function addXp(user, amount) {
   user.xp += amount;
   user.level = levelFromXp(user.xp);
   return user.level > before;
+}
+
+function removeXp(user, amount) {
+  const before = user.level;
+  user.xp = Math.max(0, user.xp - amount);
+  user.level = levelFromXp(user.xp);
+  return user.level < before;
 }
 
 function grantAchievement(user, key) {
@@ -147,6 +173,68 @@ function getDaily(user) {
     };
   }
   return user.daily[day];
+}
+
+function normalizeTrainingPlan(plan) {
+  const safePlan = plan && typeof plan === 'object' ? plan : {};
+  return {
+    items: Array.isArray(safePlan.items)
+      ? safePlan.items
+        .map((item) => ({
+          exercise: normalizeExercise(item.exercise),
+          done: Boolean(item.done)
+        }))
+        .filter((item) => item.exercise)
+        .slice(0, 12)
+      : [],
+    completedDates: Array.isArray(safePlan.completedDates) ? safePlan.completedDates : [],
+    failedDates: Array.isArray(safePlan.failedDates) ? safePlan.failedDates : []
+  };
+}
+
+function addExerciseToPlan(user, exercise) {
+  user.trainingPlan = normalizeTrainingPlan(user.trainingPlan);
+  if (user.trainingPlan.items.some((item) => item.exercise.toLowerCase() === exercise.toLowerCase())) {
+    return false;
+  }
+  user.trainingPlan.items.push({ exercise, done: false });
+  return true;
+}
+
+function setPlanItemDone(user, exercise, done) {
+  user.trainingPlan = normalizeTrainingPlan(user.trainingPlan);
+  const item = user.trainingPlan.items.find((entry) => entry.exercise.toLowerCase() === exercise.toLowerCase());
+  if (!item) return false;
+  item.done = done;
+  return true;
+}
+
+function completeTrainingPlan(user) {
+  user.trainingPlan = normalizeTrainingPlan(user.trainingPlan);
+  if (!user.trainingPlan.items.length || user.trainingPlan.items.some((item) => !item.done)) return null;
+  const day = todayKey();
+  if (user.trainingPlan.completedDates.includes(day)) return { xp: 0, alreadyCompleted: true, levelUp: false };
+  user.trainingPlan.completedDates.push(day);
+  user.trainingPlan.failedDates = user.trainingPlan.failedDates.filter((date) => date !== day);
+  user.trainingPlan.items = user.trainingPlan.items.map((item) => ({ ...item, done: false }));
+  return {
+    xp: PLAN_COMPLETE_XP,
+    alreadyCompleted: false,
+    levelUp: addXp(user, PLAN_COMPLETE_XP)
+  };
+}
+
+function failTrainingPlan(user) {
+  user.trainingPlan = normalizeTrainingPlan(user.trainingPlan);
+  const day = todayKey();
+  if (user.trainingPlan.failedDates.includes(day)) return { xp: 0, alreadyFailed: true, levelDown: false };
+  user.trainingPlan.failedDates.push(day);
+  user.trainingPlan.completedDates = user.trainingPlan.completedDates.filter((date) => date !== day);
+  return {
+    xp: PLAN_FAIL_XP,
+    alreadyFailed: false,
+    levelDown: removeXp(user, PLAN_FAIL_XP)
+  };
 }
 
 function getActiveWorkout(user) {
@@ -212,6 +300,7 @@ function addSet(user, set) {
 
   if (grantAchievement(user, 'first_set')) achievements.push('Первый подход');
   if (user.totalSets >= 10 && grantAchievement(user, 'ten_sets')) achievements.push('10 подходов');
+  setPlanItemDone(user, set.exercise, true);
   const levelUp = addXp(user, xp);
 
   return {
@@ -436,6 +525,7 @@ function getLevelVisual(user) {
 function serializeUser(user) {
   const daily = getDaily(user);
   const activeWorkout = getActiveWorkout(user);
+  user.trainingPlan = normalizeTrainingPlan(user.trainingPlan);
   const xpInLevel = user.xp % LEVEL_STEP;
   const nextLevelXp = LEVEL_STEP;
   const prCount = Object.keys(user.prs).length;
@@ -480,6 +570,14 @@ function serializeUser(user) {
       },
       loadout: getHeroLoadout(user),
       nextMilestone: getNextMilestone(user)
+    },
+    exerciseCatalog: EXERCISE_CATALOG,
+    trainingPlan: {
+      items: user.trainingPlan.items,
+      completedToday: user.trainingPlan.completedDates.includes(todayKey()),
+      failedToday: user.trainingPlan.failedDates.includes(todayKey()),
+      completeXp: PLAN_COMPLETE_XP,
+      failXp: PLAN_FAIL_XP
     },
     daily,
     activeWorkout,
@@ -883,6 +981,47 @@ app.post('/api/workout/set', authMiniApp, async (req, res) => {
   }
 
   const result = addSet(req.user, { exercise, weight, reps });
+  await saveData(db);
+  res.json({ result, state: serializeUser(req.user) });
+});
+
+app.post('/api/plan/add', authMiniApp, async (req, res) => {
+  const exercise = normalizeExercise(req.body.exercise);
+  if (!exercise) {
+    res.status(400).json({ error: 'exercise is required.' });
+    return;
+  }
+
+  addExerciseToPlan(req.user, exercise);
+  await saveData(db);
+  res.json(serializeUser(req.user));
+});
+
+app.post('/api/plan/toggle', authMiniApp, async (req, res) => {
+  const exercise = normalizeExercise(req.body.exercise);
+  const done = Boolean(req.body.done);
+  if (!setPlanItemDone(req.user, exercise, done)) {
+    res.status(404).json({ error: 'Exercise is not in your plan.' });
+    return;
+  }
+
+  await saveData(db);
+  res.json(serializeUser(req.user));
+});
+
+app.post('/api/plan/complete', authMiniApp, async (req, res) => {
+  const result = completeTrainingPlan(req.user);
+  if (!result) {
+    res.status(400).json({ error: 'Complete every plan exercise first.' });
+    return;
+  }
+
+  await saveData(db);
+  res.json({ result, state: serializeUser(req.user) });
+});
+
+app.post('/api/plan/fail', authMiniApp, async (req, res) => {
+  const result = failTrainingPlan(req.user);
   await saveData(db);
   res.json({ result, state: serializeUser(req.user) });
 });
