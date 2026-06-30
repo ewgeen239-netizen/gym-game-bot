@@ -246,7 +246,7 @@ function renderTrainingPlan() {
 async function ensureThreeScene() {
   if (threeScene) return threeScene;
   try {
-    const THREE = await import('https://unpkg.com/three@0.165.0/build/three.module.js');
+    const THREE = await import('/vendor/three.module.js');
     const renderer = new THREE.WebGLRenderer({ canvas: els.threeCharacter, alpha: true, antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     const scene = new THREE.Scene();
@@ -262,20 +262,49 @@ async function ensureThreeScene() {
     const material = new THREE.MeshStandardMaterial({ color: 0x2f74ff, metalness: 0.18, roughness: 0.38 });
     const armor = new THREE.MeshStandardMaterial({ color: 0x12274a, metalness: 0.68, roughness: 0.24 });
     const aura = new THREE.MeshBasicMaterial({ color: 0x35d8ff, transparent: true, opacity: 0.22, wireframe: true });
-    group.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 1.35, 8, 18), material));
-    group.add(new THREE.Mesh(new THREE.SphereGeometry(0.38, 24, 16), material));
-    group.children[1].position.y = 1.12;
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 1.35, 8, 18), material);
+    group.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 24, 16), material);
+    head.position.y = 1.12;
+    group.add(head);
     const shoulder = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.16, 0.32), armor);
     shoulder.position.y = 0.58;
     group.add(shoulder);
     const core = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, 0.58, 6), armor);
     core.position.y = 0.05;
     group.add(core);
+    const belt = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.045, 8, 42), armor);
+    belt.position.y = -0.42;
+    belt.rotation.x = Math.PI / 2;
+    group.add(belt);
+    const leftArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.88, 8, 12), material);
+    leftArm.position.set(-0.78, 0.14, 0);
+    leftArm.rotation.z = -0.32;
+    group.add(leftArm);
+    const rightArm = leftArm.clone();
+    rightArm.position.x = 0.78;
+    rightArm.rotation.z = 0.32;
+    group.add(rightArm);
+    const leftLeg = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.9, 8, 12), material);
+    leftLeg.position.set(-0.25, -1.04, 0);
+    group.add(leftLeg);
+    const rightLeg = leftLeg.clone();
+    rightLeg.position.x = 0.25;
+    group.add(rightLeg);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.05, 0.08), aura);
+    blade.position.set(0.95, 0.15, 0.18);
+    blade.rotation.z = -0.38;
+    group.add(blade);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.01, 8, 54), aura);
+    halo.position.y = 1.55;
+    halo.rotation.x = Math.PI / 2;
+    group.add(halo);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.012, 8, 64), aura);
     ring.rotation.x = Math.PI / 2;
     group.add(ring);
 
-    threeScene = { THREE, renderer, scene, camera, group, material, armor, aura, ring };
+    const parts = { body, head, shoulder, core, belt, leftArm, rightArm, leftLeg, rightLeg, blade, halo, ring };
+    threeScene = { THREE, renderer, scene, camera, group, material, armor, aura, parts, ring };
     resizeThreeScene();
     window.addEventListener('resize', resizeThreeScene);
     animateThreeScene();
@@ -298,7 +327,9 @@ function animateThreeScene() {
   const tick = performance.now() / 1000;
   threeScene.group.rotation.y = Math.sin(tick * 0.8) * 0.28;
   threeScene.group.position.y = Math.sin(tick * 1.4) * 0.05;
-  threeScene.ring.rotation.z = tick * 0.7;
+  threeScene.parts.ring.rotation.z = tick * 0.7;
+  threeScene.parts.halo.rotation.z = tick * 0.95;
+  threeScene.parts.blade.rotation.y = Math.sin(tick * 1.5) * 0.22;
   threeScene.renderer.render(threeScene.scene, threeScene.camera);
   requestAnimationFrame(animateThreeScene);
 }
@@ -314,8 +345,32 @@ async function updateThreeCharacter(hero) {
   scene.material.color.setHex(colors[0]);
   scene.armor.color.setHex(colors[1]);
   scene.aura.color.setHex(colors[2]);
-  scene.group.scale.setScalar(0.9 + hero.visual.muscleLevel * 0.05);
-  scene.ring.scale.setScalar(0.85 + hero.visual.auraLevel * 0.12);
+  const level = Math.min(12, hero.visual.level || 1);
+  const muscle = hero.visual.muscleLevel;
+  const armor = hero.visual.armorLevel;
+  const aura = hero.visual.auraLevel;
+  const widthBoost = 1 + muscle * 0.045;
+  const heightBoost = 1 + level * 0.012;
+
+  scene.group.scale.set(0.86 + muscle * 0.035, 0.86 + level * 0.018, 0.86 + muscle * 0.025);
+  scene.parts.body.scale.set(widthBoost, heightBoost, widthBoost);
+  scene.parts.head.scale.setScalar(1 + level * 0.006);
+  scene.parts.leftArm.scale.set(1 + muscle * 0.08, 1 + muscle * 0.055, 1 + muscle * 0.08);
+  scene.parts.rightArm.scale.copy(scene.parts.leftArm.scale);
+  scene.parts.leftLeg.scale.set(1 + muscle * 0.04, 1 + level * 0.025, 1 + muscle * 0.04);
+  scene.parts.rightLeg.scale.copy(scene.parts.leftLeg.scale);
+  scene.parts.shoulder.visible = level >= 2;
+  scene.parts.core.visible = level >= 4;
+  scene.parts.belt.visible = level >= 6;
+  scene.parts.blade.visible = hero.visual.theme === 'storm' ? level >= 7 : level >= 9;
+  scene.parts.halo.visible = aura >= 3;
+  scene.parts.shoulder.scale.set(0.72 + armor * 0.14, 0.9 + armor * 0.05, 1);
+  scene.parts.core.scale.set(0.72 + armor * 0.09, 0.75 + armor * 0.08, 1);
+  scene.parts.belt.scale.setScalar(0.76 + armor * 0.08);
+  scene.parts.blade.scale.set(1, 0.65 + level * 0.07, 1);
+  scene.parts.ring.scale.setScalar(0.85 + aura * 0.12);
+  scene.parts.halo.scale.setScalar(0.72 + aura * 0.08);
+  scene.aura.opacity = 0.12 + aura * 0.035;
 }
 
 function showView(view) {

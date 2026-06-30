@@ -510,6 +510,8 @@ function getLevelVisual(user) {
   return {
     theme: config.theme,
     frame: config.frame,
+    level,
+    stage,
     levelForm: rankLabel,
     stageName: config.stageNames[index],
     upgradeName: config.upgrades[index],
