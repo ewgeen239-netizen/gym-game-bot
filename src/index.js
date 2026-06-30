@@ -1,10 +1,14 @@
 import 'dotenv/config';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import express from 'express';
 import { Telegraf, Markup } from 'telegraf';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
+const APP_URL = process.env.APP_URL || '';
 const DATA_FILE = process.env.DATA_FILE || './data/gym-game-bot.json';
+const PORT = Number(process.env.PORT || 3000);
 const LEVEL_STEP = 200;
 
 if (!BOT_TOKEN) {
@@ -40,16 +44,21 @@ function todayKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
-function userId(ctx) {
-  return String(ctx.from.id);
+function getTelegramUserFromCtx(ctx) {
+  return {
+    id: String(ctx.from.id),
+    name: ctx.from.first_name || ctx.from.username || 'Athlete',
+    username: ctx.from.username || ''
+  };
 }
 
-function getUser(ctx) {
-  const id = userId(ctx);
+function getUserByTelegram(telegramUser) {
+  const id = String(telegramUser.id);
   if (!db.users[id]) {
     db.users[id] = {
       telegramId: id,
-      name: ctx.from.first_name || ctx.from.username || 'Athlete',
+      name: telegramUser.name || 'Athlete',
+      username: telegramUser.username || '',
       xp: 0,
       level: 1,
       streak: 0,
@@ -61,8 +70,15 @@ function getUser(ctx) {
       workouts: [],
       daily: {}
     };
+  } else {
+    db.users[id].name = telegramUser.name || db.users[id].name;
+    db.users[id].username = telegramUser.username || db.users[id].username || '';
   }
   return db.users[id];
+}
+
+function getUser(ctx) {
+  return getUserByTelegram(getTelegramUserFromCtx(ctx));
 }
 
 function levelFromXp(xp) {
@@ -104,256 +120,49 @@ function getDaily(user) {
   return user.daily[day];
 }
 
-function mainMenu() {
-  return Markup.inlineKeyboard([
-    [Markup.button.callback('Начать тренировку', 'start_workout')],
-    [Markup.button.callback('Записать подход', 'log_set')],
-    [
-      Markup.button.callback('Профиль', 'profile'),
-      Markup.button.callback('Квесты', 'quests')
-    ],
-    [
-      Markup.button.callback('Ачивки', 'achievements'),
-      Markup.button.callback('Завершить', 'finish_workout')
-    ]
-  ]);
-}
-
-function profileText(user) {
-  const xpInLevel = user.xp % LEVEL_STEP;
-  return [
-    `Темный режим: ON`,
-    ``,
-    `Игрок: ${user.name}`,
-    `Уровень: ${user.level}`,
-    `XP: ${user.xp} (${xpInLevel}/${LEVEL_STEP} до следующего уровня)`,
-    `Стрик: ${user.streak} дн.`,
-    `Тренировок: ${user.totalWorkouts}`,
-    `Подходов: ${user.totalSets}`,
-    ``,
-    `Лучшие веса:`,
-    formatPrs(user)
-  ].join('\n');
-}
-
-function formatPrs(user) {
-  const entries = Object.entries(user.prs);
-  if (!entries.length) return 'Пока пусто. Запиши первый подход.';
-  return entries
-    .sort((a, b) => b[1].weight - a[1].weight)
-    .slice(0, 8)
-    .map(([exercise, pr]) => `- ${exercise}: ${pr.weight} кг x ${pr.reps}`)
-    .join('\n');
-}
-
-function questsText(user) {
-  const daily = getDaily(user);
-  return [
-    `Ежедневные квесты`,
-    ``,
-    `${daily.sets >= 3 ? 'DONE' : 'TODO'} Записать 3 подхода: ${daily.sets}/3`,
-    `${daily.workoutFinished ? 'DONE' : 'TODO'} Завершить тренировку: ${daily.workoutFinished ? '1/1' : '0/1'}`,
-    ``,
-    `Награды начисляются сразу: подходы дают XP, завершение тренировки дает большой бонус.`
-  ].join('\n');
-}
-
-function achievementsText(user) {
-  if (!user.achievements.length) return 'Ачивок пока нет. Первый подход откроет первую.';
-  return user.achievements.map((key) => `- ${achievementTitle(key)}`).join('\n');
-}
-
-async function replyMenu(ctx, text) {
-  await ctx.reply(text, mainMenu());
-}
-
-bot.start(async (ctx) => {
-  const user = getUser(ctx);
-  await saveData(db);
-  await replyMenu(
-    ctx,
-    [
-      `Добро пожаловать в Gym Game Bot.`,
-      ``,
-      `Здесь тренировка работает как игра: записываешь упражнения и веса, получаешь XP, уровни, ачивки, стрики и ежедневные квесты.`,
-      ``,
-      profileText(user)
-    ].join('\n')
-  );
-});
-
-bot.help(async (ctx) => {
-  await ctx.reply(
-    [
-      `Команды:`,
-      `/start - открыть меню`,
-      `/profile - профиль`,
-      `/quests - ежедневные квесты`,
-      `/achievements - ачивки`,
-      ``,
-      `Самый быстрый путь: Начать тренировку -> Записать подход -> Завершить.`
-    ].join('\n')
-  );
-});
-
-bot.command('profile', async (ctx) => replyMenu(ctx, profileText(getUser(ctx))));
-bot.command('quests', async (ctx) => replyMenu(ctx, questsText(getUser(ctx))));
-bot.command('achievements', async (ctx) => replyMenu(ctx, achievementsText(getUser(ctx))));
-
-bot.action('profile', async (ctx) => {
-  await ctx.answerCbQuery();
-  await replyMenu(ctx, profileText(getUser(ctx)));
-});
-
-bot.action('quests', async (ctx) => {
-  await ctx.answerCbQuery();
-  await replyMenu(ctx, questsText(getUser(ctx)));
-});
-
-bot.action('achievements', async (ctx) => {
-  await ctx.answerCbQuery();
-  await replyMenu(ctx, achievementsText(getUser(ctx)));
-});
-
-bot.action('start_workout', async (ctx) => {
-  const user = getUser(ctx);
+function getActiveWorkout(user) {
   const day = todayKey();
-  let workout = user.workouts.find((item) => item.date === day && !item.finishedAt);
+  return user.workouts.find((item) => item.date === day && !item.finishedAt) || null;
+}
+
+function startWorkout(user) {
+  let workout = getActiveWorkout(user);
   if (!workout) {
     workout = {
-      date: day,
+      date: todayKey(),
       startedAt: new Date().toISOString(),
       finishedAt: null,
       sets: []
     };
     user.workouts.push(workout);
   }
-  await saveData(db);
-  await ctx.answerCbQuery('Тренировка начата');
-  await replyMenu(ctx, 'Тренировка активна. Жми "Записать подход", чтобы добавить упражнение, вес и повторы.');
-});
+  return workout;
+}
 
-bot.action('log_set', async (ctx) => {
-  sessions.set(userId(ctx), { step: 'exercise' });
-  await ctx.answerCbQuery();
-  await ctx.reply('Введи упражнение. Например: Жим лежа');
-});
-
-bot.action('finish_workout', async (ctx) => {
-  const user = getUser(ctx);
-  const day = todayKey();
-  const workout = user.workouts.find((item) => item.date === day && !item.finishedAt);
-  if (!workout) {
-    await ctx.answerCbQuery();
-    await replyMenu(ctx, 'Нет активной тренировки. Сначала нажми "Начать тренировку".');
-    return;
-  }
+function finishWorkout(user) {
+  const workout = getActiveWorkout(user);
+  if (!workout) return null;
 
   workout.finishedAt = new Date().toISOString();
   user.totalWorkouts += 1;
   getDaily(user).workoutFinished = true;
 
-  updateStreak(user, day);
+  updateStreak(user, todayKey());
   const levelUp = addXp(user, 50);
-  const grants = [];
-  if (grantAchievement(user, 'first_workout')) grants.push('Первая тренировка');
-  if (user.streak >= 3 && grantAchievement(user, 'three_day_streak')) grants.push('Серия 3 дня');
+  const achievements = [];
+  if (grantAchievement(user, 'first_workout')) achievements.push('Первая тренировка');
+  if (user.streak >= 3 && grantAchievement(user, 'three_day_streak')) achievements.push('Серия 3 дня');
 
-  await saveData(db);
-  await ctx.answerCbQuery('Тренировка завершена');
-  await replyMenu(
-    ctx,
-    [
-      `Тренировка завершена.`,
-      `Подходов сегодня: ${workout.sets.length}`,
-      `+50 XP`,
-      levelUp ? `Новый уровень: ${user.level}` : null,
-      grants.length ? `Новые ачивки: ${grants.join(', ')}` : null
-    ].filter(Boolean).join('\n')
-  );
-});
-
-bot.on('text', async (ctx) => {
-  const id = userId(ctx);
-  const session = sessions.get(id);
-  if (!session) return;
-
-  const text = ctx.message.text.trim();
-  if (session.step === 'exercise') {
-    session.exercise = normalizeExercise(text);
-    session.step = 'weight';
-    await ctx.reply('Введи вес в кг. Например: 80');
-    return;
-  }
-
-  if (session.step === 'weight') {
-    const weight = parseNumber(text);
-    if (!weight) {
-      await ctx.reply('Нужно число. Например: 80 или 80.5');
-      return;
-    }
-    session.weight = weight;
-    session.step = 'reps';
-    await ctx.reply('Введи повторы. Например: 8');
-    return;
-  }
-
-  if (session.step === 'reps') {
-    const reps = parseInt(text, 10);
-    if (!Number.isInteger(reps) || reps <= 0) {
-      await ctx.reply('Нужно целое число повторов. Например: 8');
-      return;
-    }
-
-    const user = getUser(ctx);
-    const result = addSet(user, {
-      exercise: session.exercise,
-      weight: session.weight,
-      reps
-    });
-    sessions.delete(id);
-    await saveData(db);
-
-    await replyMenu(
-      ctx,
-      [
-        `Подход записан: ${session.exercise} - ${session.weight} кг x ${reps}`,
-        `+${result.xp} XP`,
-        result.isPr ? `Новый PR по упражнению.` : null,
-        result.levelUp ? `Новый уровень: ${user.level}` : null,
-        result.achievements.length ? `Ачивки: ${result.achievements.join(', ')}` : null
-      ].filter(Boolean).join('\n')
-    );
-  }
-});
-
-function normalizeExercise(value) {
-  return value
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 64);
-}
-
-function parseNumber(value) {
-  const normalized = value.replace(',', '.');
-  const number = Number(normalized);
-  if (!Number.isFinite(number) || number <= 0) return null;
-  return Math.round(number * 10) / 10;
+  return {
+    workout,
+    xp: 50,
+    levelUp,
+    achievements
+  };
 }
 
 function addSet(user, set) {
-  const day = todayKey();
-  let workout = user.workouts.find((item) => item.date === day && !item.finishedAt);
-  if (!workout) {
-    workout = {
-      date: day,
-      startedAt: new Date().toISOString(),
-      finishedAt: null,
-      sets: []
-    };
-    user.workouts.push(workout);
-  }
-
+  const workout = startWorkout(user);
   const entry = {
     ...set,
     at: new Date().toISOString()
@@ -380,7 +189,9 @@ function addSet(user, set) {
     xp,
     isPr,
     levelUp,
-    achievements
+    achievements,
+    set: entry,
+    workout
   };
 }
 
@@ -400,12 +211,385 @@ function updateStreak(user, day) {
   user.lastWorkoutDate = day;
 }
 
+function normalizeExercise(value) {
+  return String(value)
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 64);
+}
+
+function parseWeight(value) {
+  const number = Number(String(value).replace(',', '.'));
+  if (!Number.isFinite(number) || number <= 0) return null;
+  return Math.round(number * 10) / 10;
+}
+
+function parseReps(value) {
+  const reps = Number.parseInt(value, 10);
+  if (!Number.isInteger(reps) || reps <= 0) return null;
+  return reps;
+}
+
+function serializeUser(user) {
+  const daily = getDaily(user);
+  const activeWorkout = getActiveWorkout(user);
+  const xpInLevel = user.xp % LEVEL_STEP;
+  const nextLevelXp = LEVEL_STEP;
+  const recentSets = user.workouts
+    .flatMap((workout) => workout.sets.map((set) => ({ ...set, date: workout.date })))
+    .sort((a, b) => new Date(b.at) - new Date(a.at))
+    .slice(0, 8);
+
+  return {
+    profile: {
+      telegramId: user.telegramId,
+      name: user.name,
+      username: user.username,
+      xp: user.xp,
+      level: user.level,
+      xpInLevel,
+      nextLevelXp,
+      streak: user.streak,
+      totalSets: user.totalSets,
+      totalWorkouts: user.totalWorkouts
+    },
+    hero: {
+      className: user.totalWorkouts >= 10 ? 'Iron Vanguard' : user.totalSets >= 20 ? 'Quest Lifter' : 'Rookie Hero',
+      power: Math.round(user.totalSets * 1.8 + user.totalWorkouts * 12 + user.level * 25),
+      rank: user.level >= 10 ? 'S' : user.level >= 6 ? 'A' : user.level >= 3 ? 'B' : 'C'
+    },
+    daily,
+    activeWorkout,
+    prs: Object.entries(user.prs)
+      .map(([exercise, pr]) => ({ exercise, ...pr }))
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 10),
+    achievements: user.achievements.map((key) => ({ key, title: achievementTitle(key) })),
+    recentSets
+  };
+}
+
+function formatPrs(user) {
+  const entries = Object.entries(user.prs);
+  if (!entries.length) return 'Пока пусто. Запиши первый подход.';
+  return entries
+    .sort((a, b) => b[1].weight - a[1].weight)
+    .slice(0, 8)
+    .map(([exercise, pr]) => `- ${exercise}: ${pr.weight} кг x ${pr.reps}`)
+    .join('\n');
+}
+
+function profileText(user) {
+  const state = serializeUser(user);
+  return [
+    `Темный RPG режим: ON`,
+    ``,
+    `Герой: ${state.profile.name}`,
+    `Класс: ${state.hero.className}`,
+    `Уровень: ${state.profile.level}`,
+    `XP: ${state.profile.xp} (${state.profile.xpInLevel}/${LEVEL_STEP})`,
+    `Стрик: ${state.profile.streak} дн.`,
+    `Тренировок: ${state.profile.totalWorkouts}`,
+    `Подходов: ${state.profile.totalSets}`,
+    ``,
+    `Лучшие веса:`,
+    formatPrs(user)
+  ].join('\n');
+}
+
+function questsText(user) {
+  const daily = getDaily(user);
+  return [
+    `Ежедневные квесты`,
+    ``,
+    `${daily.sets >= 3 ? 'DONE' : 'TODO'} Записать 3 подхода: ${daily.sets}/3`,
+    `${daily.workoutFinished ? 'DONE' : 'TODO'} Завершить тренировку: ${daily.workoutFinished ? '1/1' : '0/1'}`,
+    ``,
+    `Mini App покажет это как RPG-профиль героя.`
+  ].join('\n');
+}
+
+function achievementsText(user) {
+  if (!user.achievements.length) return 'Ачивок пока нет. Первый подход откроет первую.';
+  return user.achievements.map((key) => `- ${achievementTitle(key)}`).join('\n');
+}
+
+function mainMenu() {
+  const rows = [];
+  if (APP_URL) {
+    rows.push([Markup.button.webApp('Открыть Mini App', APP_URL)]);
+  }
+  rows.push([Markup.button.callback('Начать тренировку', 'start_workout')]);
+  rows.push([Markup.button.callback('Записать подход', 'log_set')]);
+  rows.push([
+    Markup.button.callback('Профиль', 'profile'),
+    Markup.button.callback('Квесты', 'quests')
+  ]);
+  rows.push([
+    Markup.button.callback('Ачивки', 'achievements'),
+    Markup.button.callback('Завершить', 'finish_workout')
+  ]);
+  return Markup.inlineKeyboard(rows);
+}
+
+async function replyMenu(ctx, text) {
+  await ctx.reply(text, mainMenu());
+}
+
+bot.start(async (ctx) => {
+  const user = getUser(ctx);
+  await saveData(db);
+  await replyMenu(
+    ctx,
+    [
+      `Добро пожаловать в Gym Game Bot.`,
+      ``,
+      APP_URL
+        ? `Жми "Открыть Mini App": там тёмный RPG-профиль героя, старт тренировки, XP, квесты и веса.`
+        : `Добавь APP_URL в Railway Variables, чтобы появилась кнопка Mini App.`,
+      ``,
+      profileText(user)
+    ].join('\n')
+  );
+});
+
+bot.help(async (ctx) => {
+  await ctx.reply(
+    [
+      `Команды:`,
+      `/start - открыть меню`,
+      `/profile - профиль`,
+      `/quests - ежедневные квесты`,
+      `/achievements - ачивки`,
+      ``,
+      APP_URL ? `Mini App: ${APP_URL}` : `Mini App включится после настройки APP_URL.`
+    ].join('\n'),
+    mainMenu()
+  );
+});
+
+bot.command('profile', async (ctx) => replyMenu(ctx, profileText(getUser(ctx))));
+bot.command('quests', async (ctx) => replyMenu(ctx, questsText(getUser(ctx))));
+bot.command('achievements', async (ctx) => replyMenu(ctx, achievementsText(getUser(ctx))));
+
+bot.action('profile', async (ctx) => {
+  await ctx.answerCbQuery();
+  await replyMenu(ctx, profileText(getUser(ctx)));
+});
+
+bot.action('quests', async (ctx) => {
+  await ctx.answerCbQuery();
+  await replyMenu(ctx, questsText(getUser(ctx)));
+});
+
+bot.action('achievements', async (ctx) => {
+  await ctx.answerCbQuery();
+  await replyMenu(ctx, achievementsText(getUser(ctx)));
+});
+
+bot.action('start_workout', async (ctx) => {
+  const user = getUser(ctx);
+  startWorkout(user);
+  await saveData(db);
+  await ctx.answerCbQuery('Тренировка начата');
+  await replyMenu(ctx, APP_URL ? 'Тренировка активна. Удобнее продолжить в Mini App.' : 'Тренировка активна. Жми "Записать подход".');
+});
+
+bot.action('log_set', async (ctx) => {
+  sessions.set(String(ctx.from.id), { step: 'exercise' });
+  await ctx.answerCbQuery();
+  await ctx.reply('Введи упражнение. Например: Жим лежа');
+});
+
+bot.action('finish_workout', async (ctx) => {
+  const user = getUser(ctx);
+  const result = finishWorkout(user);
+  if (!result) {
+    await ctx.answerCbQuery();
+    await replyMenu(ctx, 'Нет активной тренировки. Сначала нажми "Начать тренировку".');
+    return;
+  }
+
+  await saveData(db);
+  await ctx.answerCbQuery('Тренировка завершена');
+  await replyMenu(
+    ctx,
+    [
+      `Тренировка завершена.`,
+      `Подходов сегодня: ${result.workout.sets.length}`,
+      `+${result.xp} XP`,
+      result.levelUp ? `Новый уровень: ${user.level}` : null,
+      result.achievements.length ? `Новые ачивки: ${result.achievements.join(', ')}` : null
+    ].filter(Boolean).join('\n')
+  );
+});
+
+bot.on('text', async (ctx) => {
+  const id = String(ctx.from.id);
+  const session = sessions.get(id);
+  if (!session) return;
+
+  const text = ctx.message.text.trim();
+  if (session.step === 'exercise') {
+    session.exercise = normalizeExercise(text);
+    session.step = 'weight';
+    await ctx.reply('Введи вес в кг. Например: 80');
+    return;
+  }
+
+  if (session.step === 'weight') {
+    const weight = parseWeight(text);
+    if (!weight) {
+      await ctx.reply('Нужно число. Например: 80 или 80.5');
+      return;
+    }
+    session.weight = weight;
+    session.step = 'reps';
+    await ctx.reply('Введи повторы. Например: 8');
+    return;
+  }
+
+  if (session.step === 'reps') {
+    const reps = parseReps(text);
+    if (!reps) {
+      await ctx.reply('Нужно целое число повторов. Например: 8');
+      return;
+    }
+
+    const user = getUser(ctx);
+    const result = addSet(user, {
+      exercise: session.exercise,
+      weight: session.weight,
+      reps
+    });
+    sessions.delete(id);
+    await saveData(db);
+
+    await replyMenu(
+      ctx,
+      [
+        `Подход записан: ${session.exercise} - ${session.weight} кг x ${reps}`,
+        `+${result.xp} XP`,
+        result.isPr ? `Новый PR по упражнению.` : null,
+        result.levelUp ? `Новый уровень: ${user.level}` : null,
+        result.achievements.length ? `Ачивки: ${result.achievements.join(', ')}` : null
+      ].filter(Boolean).join('\n')
+    );
+  }
+});
+
+function parseInitData(initData) {
+  const params = new URLSearchParams(initData);
+  const hash = params.get('hash');
+  if (!hash) return null;
+  params.delete('hash');
+
+  const dataCheckString = [...params.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+
+  const secret = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+  const calculated = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
+  if (calculated !== hash) return null;
+
+  const userRaw = params.get('user');
+  if (!userRaw) return null;
+  const user = JSON.parse(userRaw);
+  return {
+    id: String(user.id),
+    name: user.first_name || user.username || 'Athlete',
+    username: user.username || ''
+  };
+}
+
+function authMiniApp(req, res, next) {
+  const initData = req.header('x-telegram-init-data') || '';
+  const devUser = process.env.NODE_ENV !== 'production' && req.query.devUser;
+  const telegramUser = initData ? parseInitData(initData) : null;
+
+  if (!telegramUser && !devUser) {
+    res.status(401).json({ error: 'Telegram Mini App auth required.' });
+    return;
+  }
+
+  req.telegramUser = telegramUser || {
+    id: String(devUser),
+    name: 'Dev Hero',
+    username: 'dev'
+  };
+  req.user = getUserByTelegram(req.telegramUser);
+  next();
+}
+
+const app = express();
+app.use(express.json());
+app.use(express.static('public'));
+
+app.get('/health', (req, res) => {
+  res.json({ ok: true, appUrlConfigured: Boolean(APP_URL) });
+});
+
+app.get('/api/state', authMiniApp, async (req, res) => {
+  await saveData(db);
+  res.json(serializeUser(req.user));
+});
+
+app.post('/api/workout/start', authMiniApp, async (req, res) => {
+  startWorkout(req.user);
+  await saveData(db);
+  res.json(serializeUser(req.user));
+});
+
+app.post('/api/workout/set', authMiniApp, async (req, res) => {
+  const exercise = normalizeExercise(req.body.exercise);
+  const weight = parseWeight(req.body.weight);
+  const reps = parseReps(req.body.reps);
+
+  if (!exercise || !weight || !reps) {
+    res.status(400).json({ error: 'exercise, weight and reps are required.' });
+    return;
+  }
+
+  const result = addSet(req.user, { exercise, weight, reps });
+  await saveData(db);
+  res.json({ result, state: serializeUser(req.user) });
+});
+
+app.post('/api/workout/finish', authMiniApp, async (req, res) => {
+  const result = finishWorkout(req.user);
+  if (!result) {
+    res.status(400).json({ error: 'No active workout.' });
+    return;
+  }
+  await saveData(db);
+  res.json({ result, state: serializeUser(req.user) });
+});
+
 bot.catch((error, ctx) => {
   console.error(`Bot error for update ${ctx.update?.update_id}:`, error);
 });
 
+if (APP_URL && process.env.SKIP_BOT !== '1') {
+  await bot.telegram.setChatMenuButton({
+    menuButton: {
+      type: 'web_app',
+      text: 'Gym RPG',
+      web_app: { url: APP_URL }
+    }
+  });
+}
+
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-await bot.launch();
-console.log('Gym Game Bot is running.');
+app.listen(PORT, () => {
+  console.log(`Mini App server is running on ${PORT}.`);
+});
+
+if (process.env.SKIP_BOT === '1') {
+  console.log('Telegram bot launch skipped.');
+} else {
+  await bot.launch();
+  console.log('Gym Game Bot is running.');
+}

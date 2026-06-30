@@ -1,6 +1,6 @@
 # Gym Game Bot
 
-Telegram bot for gym workouts that feels like a small game: exercises and working weights are the core, with XP, levels, daily quests, streaks, achievements, and PR tracking on top.
+Telegram bot + Telegram Mini App for gym workouts that feels like a small RPG: exercises and working weights are the core, with XP, levels, daily quests, streaks, achievements, PR tracking, and a dark hero profile on top.
 
 ## Links
 
@@ -11,7 +11,9 @@ Telegram bot for gym workouts that feels like a small game: exercises and workin
 
 ## Features
 
-- Dark game-style text UX for Telegram.
+- Dark RPG-style Telegram Mini App.
+- Bot button that opens the Mini App when `APP_URL` is configured.
+- Hero profile: class, power, rank, level, XP progress, streak.
 - Fast workout flow: start workout, log exercise, weight, and reps.
 - XP, levels, streaks, and personal records.
 - Daily quests:
@@ -34,8 +36,9 @@ cp .env.example .env
 
 Put your Telegram bot token into `.env`:
 
-```bash
+```text
 BOT_TOKEN=your_token_here
+APP_URL=https://your-railway-domain.up.railway.app
 ```
 
 Run:
@@ -44,13 +47,29 @@ Run:
 npm start
 ```
 
+Local Mini App preview without launching the Telegram bot:
+
+```bash
+BOT_TOKEN=123456:test SKIP_BOT=1 PORT=3000 npm start
+```
+
+Open:
+
+```text
+http://localhost:3000/?devUser=715467947
+```
+
 ## Railway Deploy
 
 1. Create a Telegram bot through `@BotFather`.
-2. Add `BOT_TOKEN` in Railway variables.
-3. Optional but recommended: add a Railway Volume and set `DATA_FILE=/data/gym-game-bot.json`, so bot data survives redeploys.
-4. Deploy from this GitHub repo: https://github.com/ewgeen239-netizen/gym-game-bot
-5. After deploy, open the bot and send `/start`: https://t.me/gymgamepanda_bot
+2. Deploy from this GitHub repo: https://github.com/ewgeen239-netizen/gym-game-bot
+3. Copy the generated Railway public domain.
+4. Add `BOT_TOKEN` and `APP_URL` in Railway variables.
+5. Optional but recommended: add a Railway Volume and set `DATA_FILE=/data/gym-game-bot.json`, so bot data survives redeploys.
+6. Redeploy.
+7. Open the bot and send `/start`: https://t.me/gymgamepanda_bot
+
+The bot sets its Telegram menu button automatically when `APP_URL` exists.
 
 Railway will run:
 
@@ -62,6 +81,7 @@ Required Railway variable:
 
 ```text
 BOT_TOKEN=your_token_from_botfather
+APP_URL=https://your-railway-domain.up.railway.app
 ```
 
 Recommended Railway variable when a Volume is mounted at `/data`:
@@ -76,11 +96,11 @@ Any server that supports Node.js 20+ can run this bot:
 
 ```bash
 npm install
-BOT_TOKEN=your_token npm start
+BOT_TOKEN=your_token APP_URL=https://your-domain.example npm start
 ```
 
 Keep the token out of GitHub. Use environment variables on Railway, VPS, Render, Fly.io, or any other host.
 
 ## MVP Notes
 
-This version uses long polling, so it is simple to deploy and does not require webhooks. For a bigger bot, the next step is PostgreSQL storage and admin screens.
+This version uses long polling, so it is simple to deploy and does not require webhooks. The Mini App validates Telegram `initData` for API requests. For a bigger bot, the next step is PostgreSQL storage and admin screens.
