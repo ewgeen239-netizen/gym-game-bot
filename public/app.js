@@ -247,6 +247,7 @@ async function ensureThreeScene() {
   if (threeScene) return threeScene;
   try {
     const THREE = await import('/vendor/three.module.js');
+    const { GLTFLoader } = await import('/vendor/GLTFLoader.js');
     const renderer = new THREE.WebGLRenderer({ canvas: els.threeCharacter, alpha: true, antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     const scene = new THREE.Scene();
@@ -259,6 +260,8 @@ async function ensureThreeScene() {
 
     const group = new THREE.Group();
     scene.add(group);
+    const modelRoot = new THREE.Group();
+    group.add(modelRoot);
     const material = new THREE.MeshStandardMaterial({ color: 0x2f74ff, metalness: 0.18, roughness: 0.38 });
     const armor = new THREE.MeshStandardMaterial({ color: 0x12274a, metalness: 0.68, roughness: 0.24 });
     const aura = new THREE.MeshBasicMaterial({ color: 0x35d8ff, transparent: true, opacity: 0.22, wireframe: true });
@@ -304,7 +307,24 @@ async function ensureThreeScene() {
     group.add(ring);
 
     const parts = { body, head, shoulder, core, belt, leftArm, rightArm, leftLeg, rightLeg, blade, halo, ring };
-    threeScene = { THREE, renderer, scene, camera, group, material, armor, aura, parts, ring };
+    threeScene = { THREE, renderer, scene, camera, group, modelRoot, material, armor, aura, parts, ring, usingModel: false };
+    const loader = new GLTFLoader();
+    loader.load('/assets/models/base_basic_shaded.glb', (gltf) => {
+      modelRoot.add(gltf.scene);
+      modelRoot.scale.setScalar(1.18);
+      modelRoot.position.set(0, -1.15, 0);
+      modelRoot.rotation.y = Math.PI;
+      gltf.scene.traverse((item) => {
+        if (item.isMesh) {
+          item.castShadow = false;
+          item.frustumCulled = false;
+        }
+      });
+      threeScene.usingModel = true;
+      [body, head, leftArm, rightArm, leftLeg, rightLeg].forEach((part) => {
+        part.visible = false;
+      });
+    });
     resizeThreeScene();
     window.addEventListener('resize', resizeThreeScene);
     animateThreeScene();
@@ -353,6 +373,8 @@ async function updateThreeCharacter(hero) {
   const heightBoost = 1 + level * 0.012;
 
   scene.group.scale.set(0.86 + muscle * 0.035, 0.86 + level * 0.018, 0.86 + muscle * 0.025);
+  scene.modelRoot.scale.setScalar(1.05 + level * 0.025 + muscle * 0.025);
+  scene.modelRoot.position.y = -1.18 + level * 0.015;
   scene.parts.body.scale.set(widthBoost, heightBoost, widthBoost);
   scene.parts.head.scale.setScalar(1 + level * 0.006);
   scene.parts.leftArm.scale.set(1 + muscle * 0.08, 1 + muscle * 0.055, 1 + muscle * 0.08);
