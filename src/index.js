@@ -42,6 +42,19 @@ const CATALOG=[
   {id:'e26',emoji:'🦵',name:'ПОДЪЁМ НОГ В ВИСЕ', cat:'Пресс',  meta:'Турник · Нижний пресс',  sets:3,reps:15,weight:0 },
 ];
 
+function getLevel(xp){for(let i=XP_LVL.length-1;i>=0;i--)if(xp>=XP_LVL[i])return Math.min(i+1,10);return 1;}
+function getLvlXP(l){return XP_LVL[Math.min(l-1,XP_LVL.length-1)]||0;}
+function getNextXP(l){return XP_LVL[Math.min(l,XP_LVL.length-1)]||XP_LVL[XP_LVL.length-1];}
+function getRank(l){return RANKS[Math.min(Math.floor((l-1)/2),RANKS.length-1)];}
+function getClass(l){return CLASSES[Math.min(Math.floor((l-1)/2),CLASSES.length-1)];}
+function getDayIdx(){return(new Date().getDay()+6)%7;}
+ 
+function loadPlan(){
+  try{const s=localStorage.getItem(`gq_plan_${TG_USER.id}`);if(s)return JSON.parse(s);}catch(e){}
+  return DAYS.map((d,i)=>({day:d,rest:i===6,exercises:[]}));
+}
+function savePlanLS(){try{localStorage.setItem(`gq_plan_${TG_USER.id}`,JSON.stringify(S.plan));}catch(e){}}
+
 if (!BOT_TOKEN) {
   console.error('Missing BOT_TOKEN. Add it to .env or Railway variables.');
   process.exit(1);
