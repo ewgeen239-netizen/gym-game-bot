@@ -4,154 +4,173 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Gym Game Bot</title>
-  <meta name="theme-color" content="#070914">
+  <meta name="theme-color" content="#080b14">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
   <main class="app-shell">
-    <section class="hero-panel" aria-labelledby="hero-title">
-      <div>
-        <p class="eyebrow">Gym RPG profile</p>
-        <h1 id="hero-title">Загрузка героя...</h1>
-        <p class="hero-copy">Тренировка как игра: стартуй, записывай веса, забирай XP и закрывай квесты.</p>
+    <section class="view view-choice" id="choiceView">
+      <div class="choice-head">
+        <p class="eyebrow">Choose fighter</p>
+        <h1>Выбери бойца</h1>
+        <p>Дальше весь прогресс, уровни и рейтинг будут привязаны к твоему Telegram.</p>
       </div>
-      <div class="hero-rank" id="heroRank">C</div>
-    </section>
-
-    <section class="choice-card" id="characterChoice">
-      <div class="section-heading">
-        <h2>Выбор персонажа</h2>
-        <span>первый вход</span>
-      </div>
-      <p class="choice-copy">Выбери героя. Потом весь прогресс, уровни и рейтинг будут синхронизироваться с твоим Telegram.</p>
       <div class="choice-grid" id="choiceGrid"></div>
     </section>
 
-    <section class="character-card">
-      <div class="avatar-frame">
-        <div class="avatar-core">
-          <span id="heroInitial">G</span>
+    <section class="view" id="heroView">
+      <article class="hero-cover">
+        <img id="heroImage" src="/assets/rimuru-tempest.jpg" alt="">
+        <div class="hero-cover-gradient"></div>
+        <div class="hero-cover-content">
+          <p class="eyebrow">Gym RPG profile</p>
+          <h1 id="hero-title">Загрузка героя...</h1>
+          <div class="hero-tags">
+            <span id="heroRank">C</span>
+            <span id="heroClass">Rookie Hero</span>
+            <span id="syncStatus">Telegram</span>
+          </div>
         </div>
-      </div>
-      <div class="character-meta">
-        <div class="meta-row">
-          <span>Класс</span>
-          <strong id="heroClass">Rookie Hero</strong>
-        </div>
-        <div class="meta-row">
-          <span>Power</span>
-          <strong id="heroPower">0</strong>
-        </div>
-        <div class="meta-row">
-          <span>Синхронизация</span>
-          <strong id="syncStatus">Telegram</strong>
-        </div>
-        <div class="level-line">
+      </article>
+
+      <section class="level-card">
+        <div class="level-top">
           <div>
             <span id="heroLevel">Level 1</span>
             <strong id="heroXp">0 / 200 XP</strong>
           </div>
-          <div class="progress-track">
-            <div class="progress-fill" id="xpFill"></div>
+          <strong><span id="heroPower">0</span> power</strong>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="xpFill"></div>
+        </div>
+      </section>
+
+      <section class="stats-grid">
+        <article>
+          <span>Стрик</span>
+          <strong id="streak">0 дн.</strong>
+        </article>
+        <article>
+          <span>Тренировки</span>
+          <strong id="workouts">0</strong>
+        </article>
+        <article>
+          <span>Подходы</span>
+          <strong id="sets">0</strong>
+        </article>
+      </section>
+    </section>
+
+    <section class="view" id="trainingView">
+      <header class="page-head">
+        <p class="eyebrow">Upgrade menu</p>
+        <h1>Прокачка</h1>
+        <p id="heroEvolution">Прокачка появится после выбора персонажа.</p>
+      </header>
+
+      <section class="action-card">
+        <button class="start-button" id="startWorkout" type="button">
+          <span>Начать тренировку</span>
+          <small>Главный квест дня</small>
+        </button>
+        <button class="ghost-button" id="finishWorkout" type="button">Завершить</button>
+      </section>
+
+      <section class="set-card">
+        <div class="section-heading">
+          <h2>Записать подход</h2>
+          <span id="workoutStatus">Нет активной тренировки</span>
+        </div>
+        <form id="setForm" class="set-form">
+          <label>
+            <span>Упражнение</span>
+            <input name="exercise" autocomplete="off" placeholder="Жим лежа">
+          </label>
+          <div class="form-grid">
+            <label>
+              <span>Вес, кг</span>
+              <input name="weight" inputmode="decimal" placeholder="80">
+            </label>
+            <label>
+              <span>Повторы</span>
+              <input name="reps" inputmode="numeric" placeholder="8">
+            </label>
+          </div>
+          <button type="submit">Добавить подход</button>
+        </form>
+      </section>
+
+      <section class="rpg-card">
+        <div class="section-heading">
+          <h2>Атрибуты</h2>
+          <span id="heroTitle">Новобранец</span>
+        </div>
+        <div class="attribute-grid">
+          <div class="attribute strength">
+            <span>Сила</span>
+            <strong id="attrStrength">0</strong>
+          </div>
+          <div class="attribute discipline">
+            <span>Дисциплина</span>
+            <strong id="attrDiscipline">0</strong>
+          </div>
+          <div class="attribute endurance">
+            <span>Выносливость</span>
+            <strong id="attrEndurance">0</strong>
           </div>
         </div>
-      </div>
-    </section>
+        <div class="loadout-list" id="loadout"></div>
+        <p class="milestone" id="nextMilestone">Следующая цель появится после первого подхода.</p>
+      </section>
 
-    <section class="primary-actions">
-      <button class="start-button" id="startWorkout" type="button">
-        <span>Начать тренировку</span>
-        <small>Главный квест дня</small>
-      </button>
-      <button class="ghost-button" id="finishWorkout" type="button">Завершить</button>
-    </section>
-
-    <section class="set-card">
-      <div class="section-heading">
-        <h2>Записать подход</h2>
-        <span id="workoutStatus">Нет активной тренировки</span>
-      </div>
-      <form id="setForm" class="set-form">
-        <label>
-          <span>Упражнение</span>
-          <input name="exercise" autocomplete="off" placeholder="Жим лежа">
-        </label>
-        <div class="form-grid">
-          <label>
-            <span>Вес, кг</span>
-            <input name="weight" inputmode="decimal" placeholder="80">
-          </label>
-          <label>
-            <span>Повторы</span>
-            <input name="reps" inputmode="numeric" placeholder="8">
-          </label>
+      <section class="quest-card">
+        <div class="section-heading">
+          <h2>Квесты дня</h2>
+          <span>Сегодня</span>
         </div>
-        <button type="submit">Добавить подход</button>
-      </form>
+        <div class="quest-list" id="quests"></div>
+      </section>
     </section>
 
-    <section class="stats-grid">
-      <article>
-        <span>Стрик</span>
-        <strong id="streak">0 дн.</strong>
-      </article>
-      <article>
-        <span>Тренировки</span>
-        <strong id="workouts">0</strong>
-      </article>
-      <article>
-        <span>Подходы</span>
-        <strong id="sets">0</strong>
-      </article>
+    <section class="view" id="ratingView">
+      <header class="page-head">
+        <p class="eyebrow">Competition</p>
+        <h1>Рейтинг</h1>
+        <p>Смотри, кто реально качается, и двигайся выше по XP, power и тренировкам.</p>
+      </header>
+      <section class="list-card">
+        <div id="ratingContent"></div>
+      </section>
     </section>
 
-    <section class="rpg-card">
-      <div class="section-heading">
-        <h2>Персонаж</h2>
-        <span id="heroTitle">Новобранец</span>
-      </div>
-      <p class="hero-evolution" id="heroEvolution">Прокачка появится после выбора персонажа.</p>
-      <div class="attribute-grid">
-        <div class="attribute">
-          <span>Сила</span>
-          <strong id="attrStrength">0</strong>
+    <section class="view" id="accountView">
+      <header class="page-head">
+        <p class="eyebrow">Account</p>
+        <h1>Аккаунт</h1>
+        <p>PR, ачивки и история последних подходов.</p>
+      </header>
+      <section class="list-card">
+        <div class="subtabs">
+          <button class="subtab is-active" data-panel="prs" type="button">PR</button>
+          <button class="subtab" data-panel="achievements" type="button">Ачивки</button>
+          <button class="subtab" data-panel="history" type="button">История</button>
         </div>
-        <div class="attribute">
-          <span>Дисциплина</span>
-          <strong id="attrDiscipline">0</strong>
-        </div>
-        <div class="attribute">
-          <span>Выносливость</span>
-          <strong id="attrEndurance">0</strong>
-        </div>
-      </div>
-      <div class="loadout-list" id="loadout"></div>
-      <p class="milestone" id="nextMilestone">Следующая цель появится после первого подхода.</p>
-    </section>
-
-    <section class="quest-card">
-      <div class="section-heading">
-        <h2>Ежедневные квесты</h2>
-        <span>Сегодня</span>
-      </div>
-      <div class="quest-list" id="quests"></div>
-    </section>
-
-    <section class="tabs">
-      <button class="tab is-active" data-tab="prs" type="button">PR</button>
-      <button class="tab" data-tab="achievements" type="button">Ачивки</button>
-      <button class="tab" data-tab="rating" type="button">Рейтинг</button>
-      <button class="tab" data-tab="history" type="button">История</button>
-    </section>
-
-    <section class="list-card">
-      <div id="tabContent"></div>
+        <div id="accountContent"></div>
+      </section>
     </section>
   </main>
+
+  <nav class="bottom-nav" id="bottomNav" aria-label="Основные вкладки">
+    <button class="nav-tab is-active" data-view="hero" type="button">Герой</button>
+    <button class="nav-tab" data-view="training" type="button">Прокачка</button>
+    <button class="nav-tab" data-view="rating" type="button">Рейтинг</button>
+    <button class="nav-tab" data-view="account" type="button">Аккаунт</button>
+  </nav>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="/app.js" type="module"></script>

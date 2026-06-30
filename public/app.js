@@ -3,15 +3,22 @@ tg?.ready();
 tg?.expand();
 
 let state = null;
-let activeTab = 'prs';
+let activeView = 'hero';
+let activePanel = 'prs';
 let leaderboard = null;
 const initData = tg?.initData || '';
 const devUser = new URLSearchParams(window.location.search).get('devUser');
 
 const els = {
+  choiceView: document.getElementById('choiceView'),
+  heroView: document.getElementById('heroView'),
+  trainingView: document.getElementById('trainingView'),
+  ratingView: document.getElementById('ratingView'),
+  accountView: document.getElementById('accountView'),
+  bottomNav: document.getElementById('bottomNav'),
   title: document.getElementById('hero-title'),
   rank: document.getElementById('heroRank'),
-  initial: document.getElementById('heroInitial'),
+  heroImage: document.getElementById('heroImage'),
   heroClass: document.getElementById('heroClass'),
   heroPower: document.getElementById('heroPower'),
   heroLevel: document.getElementById('heroLevel'),
@@ -21,7 +28,6 @@ const els = {
   attrStrength: document.getElementById('attrStrength'),
   attrDiscipline: document.getElementById('attrDiscipline'),
   attrEndurance: document.getElementById('attrEndurance'),
-  characterChoice: document.getElementById('characterChoice'),
   choiceGrid: document.getElementById('choiceGrid'),
   heroEvolution: document.getElementById('heroEvolution'),
   syncStatus: document.getElementById('syncStatus'),
@@ -35,7 +41,8 @@ const els = {
   workouts: document.getElementById('workouts'),
   sets: document.getElementById('sets'),
   quests: document.getElementById('quests'),
-  tabContent: document.getElementById('tabContent'),
+  ratingContent: document.getElementById('ratingContent'),
+  accountContent: document.getElementById('accountContent'),
   toast: document.getElementById('toast')
 };
 
@@ -70,9 +77,20 @@ function render(nextState) {
   const { profile, hero, daily, activeWorkout } = state;
   const xpPercent = Math.min(100, Math.round((profile.xpInLevel / profile.nextLevelXp) * 100));
 
-  els.title.textContent = profile.name;
+  renderHeroChoices(hero);
+  const needsChoice = hero.choiceRequired;
+  document.body.classList.toggle('is-choosing', needsChoice);
+  els.choiceView.classList.toggle('is-active', needsChoice);
+  els.bottomNav.hidden = needsChoice;
+
+  if (!needsChoice) {
+    showView(activeView);
+  }
+
+  els.title.textContent = hero.archetype;
   els.rank.textContent = hero.rank;
-  els.initial.textContent = hero.avatar || profile.name.slice(0, 1).toUpperCase();
+  els.heroImage.src = hero.image;
+  els.heroImage.alt = hero.archetype;
   els.heroClass.textContent = hero.className;
   els.heroPower.textContent = hero.power;
   els.syncStatus.textContent = profile.username ? `@${profile.username}` : 'Telegram ID';
@@ -97,18 +115,21 @@ function render(nextState) {
   ].join('');
   els.loadout.innerHTML = hero.loadout.map(loadoutTemplate).join('');
   els.nextMilestone.textContent = hero.nextMilestone;
-  renderHeroChoices(hero);
-
-  renderTab();
+  renderRating();
+  renderAccountPanel();
 }
 
 function renderHeroChoices(hero) {
-  els.characterChoice.classList.toggle('is-hidden', !hero.choiceRequired);
   els.choiceGrid.innerHTML = hero.choices.map((choice) => `
     <button class="choice-option" data-hero-type="${escapeHtml(choice.key)}" type="button">
-      <span class="choice-avatar">${escapeHtml(choice.avatar)}</span>
-      <strong>${escapeHtml(choice.name)}</strong>
-      <small>${escapeHtml(choice.copy)}</small>
+      <span class="choice-media">
+        <img src="${escapeHtml(choice.image)}" alt="${escapeHtml(choice.name)}">
+      </span>
+      <span class="choice-body">
+        <strong>${escapeHtml(choice.name)}</strong>
+        <small>${escapeHtml(choice.className)}</small>
+        <em>${escapeHtml(choice.copy)}</em>
+      </span>
     </button>
   `).join('');
 
@@ -139,64 +160,26 @@ function loadoutTemplate(item) {
   `;
 }
 
-function renderTab() {
-  document.querySelectorAll('.tab').forEach((tab) => {
-    tab.classList.toggle('is-active', tab.dataset.tab === activeTab);
+function showView(view) {
+  activeView = view;
+  const isChoice = state?.hero.choiceRequired;
+  els.heroView.classList.toggle('is-active', !isChoice && view === 'hero');
+  els.trainingView.classList.toggle('is-active', !isChoice && view === 'training');
+  els.ratingView.classList.toggle('is-active', !isChoice && view === 'rating');
+  els.accountView.classList.toggle('is-active', !isChoice && view === 'account');
+
+  document.querySelectorAll('.nav-tab').forEach((tab) => {
+    tab.classList.toggle('is-active', tab.dataset.view === view);
   });
 
-  if (activeTab === 'prs') {
-    els.tabContent.innerHTML = listOrEmpty(
-      state.prs,
-      'PR пока нет. Запиши первый подход, и герой получит первый рекорд.',
-      (item) => `
-        <div class="item-row">
-          <div>
-            <strong>${escapeHtml(item.exercise)}</strong>
-            <span>Личный рекорд</span>
-          </div>
-          <strong>${item.weight} кг x ${item.reps}</strong>
-        </div>
-      `
-    );
-  }
-
-  if (activeTab === 'achievements') {
-    els.tabContent.innerHTML = listOrEmpty(
-      state.achievements,
-      'Ачивок пока нет. Первый подход откроет стартовую.',
-      (item) => `
-        <div class="item-row">
-          <strong>${escapeHtml(item.title)}</strong>
-          <span>Открыто</span>
-        </div>
-      `
-    );
-  }
-
-  if (activeTab === 'rating') {
-    renderRating();
-  }
-
-  if (activeTab === 'history') {
-    els.tabContent.innerHTML = listOrEmpty(
-      state.recentSets,
-      'История пустая. Начни тренировку и добавь подход.',
-      (item) => `
-        <div class="item-row">
-          <div>
-            <strong>${escapeHtml(item.exercise)}</strong>
-            <span>${item.date}</span>
-          </div>
-          <strong>${item.weight} кг x ${item.reps}</strong>
-        </div>
-      `
-    );
-  }
+  if (view === 'rating') renderRating();
+  if (view === 'account') renderAccountPanel();
 }
 
 function renderRating() {
+  if (activeView !== 'rating') return;
   if (!leaderboard) {
-    els.tabContent.innerHTML = '<p class="empty">Загружаю рейтинг игроков...</p>';
+    els.ratingContent.innerHTML = '<p class="empty">Загружаю рейтинг игроков...</p>';
     loadLeaderboard();
     return;
   }
@@ -215,7 +198,7 @@ function renderRating() {
     `;
   }).join('');
 
-  els.tabContent.innerHTML = `
+  els.ratingContent.innerHTML = `
     <div class="rating-summary">Твой ранг: ${leaderboard.currentRank ? `#${leaderboard.currentRank}` : 'пока нет'}</div>
     ${rows ? `<div class="leader-list">${rows}</div>` : '<p class="empty">Рейтинг пустой. Первый игрок появится после входа в Mini App.</p>'}
   `;
@@ -224,9 +207,56 @@ function renderRating() {
 async function loadLeaderboard() {
   try {
     leaderboard = await api('/api/leaderboard');
-    if (activeTab === 'rating') renderRating();
+    renderRating();
   } catch (error) {
-    els.tabContent.innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
+    els.ratingContent.innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+function renderAccountPanel() {
+  if (activePanel === 'prs') {
+    els.accountContent.innerHTML = listOrEmpty(
+      state.prs,
+      'PR пока нет. Запиши первый подход, и герой получит первый рекорд.',
+      (item) => `
+        <div class="item-row">
+          <div>
+            <strong>${escapeHtml(item.exercise)}</strong>
+            <span>Личный рекорд</span>
+          </div>
+          <strong>${item.weight} кг x ${item.reps}</strong>
+        </div>
+      `
+    );
+  }
+
+  if (activePanel === 'achievements') {
+    els.accountContent.innerHTML = listOrEmpty(
+      state.achievements,
+      'Ачивок пока нет. Первый подход откроет стартовую.',
+      (item) => `
+        <div class="item-row">
+          <strong>${escapeHtml(item.title)}</strong>
+          <span>Открыто</span>
+        </div>
+      `
+    );
+  }
+
+  if (activePanel === 'history') {
+    els.accountContent.innerHTML = listOrEmpty(
+      state.recentSets,
+      'История пустая. Начни тренировку и добавь подход.',
+      (item) => `
+        <div class="item-row">
+          <div>
+            <strong>${escapeHtml(item.exercise)}</strong>
+            <span>${item.date}</span>
+          </div>
+          <strong>${item.weight} кг x ${item.reps}</strong>
+        </div>
+      `
+    );
   }
 }
 
@@ -250,6 +280,7 @@ async function refresh() {
 }
 
 async function chooseHero(heroType) {
+  activeView = 'hero';
   render(await api('/api/hero/choose', {
     method: 'POST',
     body: JSON.stringify({ heroType })
@@ -297,13 +328,20 @@ els.setForm.addEventListener('submit', async (event) => {
   }
 });
 
-document.querySelectorAll('.tab').forEach((tab) => {
+document.querySelectorAll('.nav-tab').forEach((tab) => {
+  tab.addEventListener('click', () => showView(tab.dataset.view));
+});
+
+document.querySelectorAll('.subtab').forEach((tab) => {
   tab.addEventListener('click', () => {
-    activeTab = tab.dataset.tab;
-    renderTab();
+    activePanel = tab.dataset.panel;
+    document.querySelectorAll('.subtab').forEach((item) => {
+      item.classList.toggle('is-active', item.dataset.panel === activePanel);
+    });
+    renderAccountPanel();
   });
 });
 
 refresh().catch((error) => {
-  document.body.innerHTML = `<main class="app-shell"><section class="hero-panel"><div><h1>Mini App не авторизован</h1><p class="hero-copy">${escapeHtml(error.message)}. Открой приложение через кнопку в Telegram-боте.</p></div></section></main>`;
+  document.body.innerHTML = `<main class="app-shell"><section class="page-head"><h1>Mini App не авторизован</h1><p>${escapeHtml(error.message)}. Открой приложение через кнопку в Telegram-боте.</p></section></main>`;
 });

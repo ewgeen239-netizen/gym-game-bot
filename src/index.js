@@ -25,21 +25,24 @@ const defaultData = {
 
 const HERO_TYPES = {
   tema: {
-    name: 'Персонаж Темы',
-    className: 'Iron Panda',
-    avatar: 'T',
-    copy: 'Авторский герой Темы: темный профиль, рабочие веса и спокойная охота за прогрессом.'
+    name: 'Rimuru Tempest',
+    className: 'Storm Slime',
+    avatar: 'R',
+    image: '/assets/rimuru-tempest-card.jpg',
+    copy: 'Герой Темы: спокойный, холодный стиль, уровни силы и эволюция через каждую тренировку.'
   },
   athlete: {
     name: 'Спортсмен из зала',
     className: 'Gym Athlete',
     avatar: 'A',
+    image: '/assets/gym-athlete.svg',
     copy: 'Классический путь: от новичка к заметно более сильному и собранному атлету.'
   },
   sportswoman: {
     name: 'Спортсменка',
     className: 'Power Athlete',
     avatar: 'S',
+    image: '/assets/sportswoman.svg',
     copy: 'Женский персонаж: с каждым уровнем больше силы, формы и уверенности в тренировках.'
   }
 };
@@ -269,7 +272,7 @@ function getHeroClass(user) {
   if (user.heroType === 'sportswoman') {
     return ['Fit Starter', 'Strong Athlete', 'Power Athlete', 'Elite Form'][stage];
   }
-  return ['Iron Panda Rookie', 'Quest Panda', 'Iron Panda', 'Panda Vanguard'][stage] || hero.className;
+  return ['Slime Rookie', 'Storm Trainee', 'Rimuru Awakened', 'Tempest Vanguard'][stage] || hero.className;
 }
 
 function getEvolutionStage(user) {
@@ -298,10 +301,10 @@ function getEvolutionText(user) {
     ][stage];
   }
   return [
-    'Персонаж Темы просыпается: первый квест - зайти в зал.',
-    'Темный герой набирает форму: веса становятся добычей.',
-    'Iron Panda уже в игре: PR и стрики двигают ранг.',
-    'Vanguard режим: герой держит серию и давит прогресс.'
+    'Rimuru Tempest просыпается: первый квест - зайти в зал.',
+    'Storm Slime набирает форму: веса становятся добычей.',
+    'Rimuru Awakened уже в игре: PR и стрики двигают ранг.',
+    'Tempest Vanguard режим: герой держит серию и давит прогресс.'
   ][stage];
 }
 
@@ -336,6 +339,7 @@ function serializeUser(user) {
       choices: Object.entries(HERO_TYPES).map(([key, value]) => ({ key, ...value })),
       archetype: getHeroDefinition(user).name,
       avatar: getHeroDefinition(user).avatar,
+      image: getHeroDefinition(user).image,
       description: getHeroDefinition(user).copy,
       evolutionStage: getEvolutionStage(user),
       evolutionText: getEvolutionText(user),
