@@ -16,6 +16,12 @@ const els = {
   heroLevel: document.getElementById('heroLevel'),
   heroXp: document.getElementById('heroXp'),
   xpFill: document.getElementById('xpFill'),
+  heroTitle: document.getElementById('heroTitle'),
+  attrStrength: document.getElementById('attrStrength'),
+  attrDiscipline: document.getElementById('attrDiscipline'),
+  attrEndurance: document.getElementById('attrEndurance'),
+  loadout: document.getElementById('loadout'),
+  nextMilestone: document.getElementById('nextMilestone'),
   startWorkout: document.getElementById('startWorkout'),
   finishWorkout: document.getElementById('finishWorkout'),
   workoutStatus: document.getElementById('workoutStatus'),
@@ -67,6 +73,10 @@ function render(nextState) {
   els.heroLevel.textContent = `Level ${profile.level}`;
   els.heroXp.textContent = `${profile.xpInLevel} / ${profile.nextLevelXp} XP`;
   els.xpFill.style.width = `${xpPercent}%`;
+  els.heroTitle.textContent = hero.title;
+  els.attrStrength.textContent = hero.attributes.strength;
+  els.attrDiscipline.textContent = hero.attributes.discipline;
+  els.attrEndurance.textContent = hero.attributes.endurance;
   els.streak.textContent = `${profile.streak} дн.`;
   els.workouts.textContent = profile.totalWorkouts;
   els.sets.textContent = profile.totalSets;
@@ -78,6 +88,8 @@ function render(nextState) {
     questTemplate('Записать 3 подхода', `${daily.sets}/3`, daily.sets >= 3),
     questTemplate('Завершить тренировку', daily.workoutFinished ? '1/1' : '0/1', daily.workoutFinished)
   ].join('');
+  els.loadout.innerHTML = hero.loadout.map(loadoutTemplate).join('');
+  els.nextMilestone.textContent = hero.nextMilestone;
 
   renderTab();
 }
@@ -90,6 +102,16 @@ function questTemplate(title, progress, done) {
         <span>${done ? 'Квест закрыт' : 'В процессе'}</span>
       </div>
       <strong>${progress}</strong>
+    </div>
+  `;
+}
+
+function loadoutTemplate(item) {
+  return `
+    <div class="loadout-item ${item.unlocked ? '' : 'is-locked'}">
+      <span class="loadout-slot">${escapeHtml(item.slot)}</span>
+      <span class="loadout-name">${escapeHtml(item.name)}</span>
+      <span class="loadout-state">${item.unlocked ? 'active' : 'locked'}</span>
     </div>
   `;
 }

@@ -235,6 +235,7 @@ function serializeUser(user) {
   const activeWorkout = getActiveWorkout(user);
   const xpInLevel = user.xp % LEVEL_STEP;
   const nextLevelXp = LEVEL_STEP;
+  const prCount = Object.keys(user.prs).length;
   const recentSets = user.workouts
     .flatMap((workout) => workout.sets.map((set) => ({ ...set, date: workout.date })))
     .sort((a, b) => new Date(b.at) - new Date(a.at))
@@ -255,8 +256,16 @@ function serializeUser(user) {
     },
     hero: {
       className: user.totalWorkouts >= 10 ? 'Iron Vanguard' : user.totalSets >= 20 ? 'Quest Lifter' : 'Rookie Hero',
+      title: getHeroTitle(user),
       power: Math.round(user.totalSets * 1.8 + user.totalWorkouts * 12 + user.level * 25),
-      rank: user.level >= 10 ? 'S' : user.level >= 6 ? 'A' : user.level >= 3 ? 'B' : 'C'
+      rank: user.level >= 10 ? 'S' : user.level >= 6 ? 'A' : user.level >= 3 ? 'B' : 'C',
+      attributes: {
+        strength: Math.min(99, 10 + prCount * 8 + Math.floor(user.totalSets / 3)),
+        discipline: Math.min(99, 8 + user.streak * 10 + user.totalWorkouts * 2),
+        endurance: Math.min(99, 10 + user.totalWorkouts * 6 + Math.floor(user.totalSets / 5))
+      },
+      loadout: getHeroLoadout(user),
+      nextMilestone: getNextMilestone(user)
     },
     daily,
     activeWorkout,
@@ -267,6 +276,51 @@ function serializeUser(user) {
     achievements: user.achievements.map((key) => ({ key, title: achievementTitle(key) })),
     recentSets
   };
+}
+
+function getHeroTitle(user) {
+  if (user.streak >= 14) return 'Легенда режима';
+  if (user.totalWorkouts >= 20) return 'Хранитель зала';
+  if (Object.keys(user.prs).length >= 5) return 'Охотник за весами';
+  if (user.totalSets >= 30) return 'Железный ученик';
+  if (user.totalWorkouts >= 3) return 'Стабильный новичок';
+  return 'Новобранец';
+}
+
+function getHeroLoadout(user) {
+  const prCount = Object.keys(user.prs).length;
+  return [
+    {
+      slot: 'Амулет',
+      name: user.totalSets >= 1 ? 'Первый подход' : 'Пустой слот',
+      unlocked: user.totalSets >= 1
+    },
+    {
+      slot: 'Пояс',
+      name: user.totalWorkouts >= 3 ? 'Пояс стабильности' : 'Откроется за 3 тренировки',
+      unlocked: user.totalWorkouts >= 3
+    },
+    {
+      slot: 'Перчатки',
+      name: prCount >= 3 ? 'Перчатки PR' : 'Откроется за 3 PR',
+      unlocked: prCount >= 3
+    },
+    {
+      slot: 'Аура',
+      name: user.streak >= 7 ? 'Семидневный огонь' : 'Откроется за 7 дней стрика',
+      unlocked: user.streak >= 7
+    }
+  ];
+}
+
+function getNextMilestone(user) {
+  const prCount = Object.keys(user.prs).length;
+  if (user.totalSets < 1) return 'Запиши первый подход и открой первый слот героя.';
+  if (user.totalWorkouts < 3) return `До Пояса стабильности: ${3 - user.totalWorkouts} трен.`;
+  if (prCount < 3) return `До Перчаток PR: ${3 - prCount} PR.`;
+  if (user.streak < 7) return `До Семидневного огня: ${7 - user.streak} дн.`;
+  if (user.level < 6) return `До ранга A: ${6 - user.level} уров.`;
+  return 'Следующая цель: держать серию и растить рабочие веса.';
 }
 
 function formatPrs(user) {
