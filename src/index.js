@@ -13,19 +13,33 @@ const LEVEL_STEP = 200;
 const PLAN_COMPLETE_XP = 80;
 const PLAN_FAIL_XP = 40;
 
-const EXERCISE_CATALOG = [
-  'Жим лежа',
-  'Приседания',
-  'Становая тяга',
-  'Жим гантелей',
-  'Тяга верхнего блока',
-  'Тяга штанги в наклоне',
-  'Подтягивания',
-  'Отжимания',
-  'Жим ногами',
-  'Сгибание рук',
-  'Разгибание рук',
-  'Планка'
+const CATALOG=[
+  {id:'e01',emoji:'🏋️',name:'ЖИМ ЛЁЖА',         cat:'Грудь',  meta:'Штанга · Грудные',       sets:3,reps:10,weight:60},
+  {id:'e02',emoji:'💪',name:'ЖИМ ГАНТЕЛЕЙ',      cat:'Грудь',  meta:'Гантели · Грудные',      sets:3,reps:12,weight:24},
+  {id:'e03',emoji:'🤸',name:'РАЗВОДКА',           cat:'Грудь',  meta:'Гантели · Растяжка',     sets:3,reps:12,weight:16},
+  {id:'e04',emoji:'📐',name:'ЖИМ В НАКЛОНЕ',     cat:'Грудь',  meta:'Штанга · Верх груди',    sets:4,reps:8, weight:50},
+  {id:'e05',emoji:'🦅',name:'ПОДТЯГИВАНИЯ',       cat:'Спина',  meta:'Турник · Широчайшие',    sets:4,reps:8, weight:0 },
+  {id:'e06',emoji:'⬇️',name:'ТЯГА БЛОКА',        cat:'Спина',  meta:'Блок · Широчайшие',      sets:3,reps:12,weight:55},
+  {id:'e07',emoji:'🚣',name:'ТЯГА ГАНТЕЛИ',       cat:'Спина',  meta:'Гантели · Широчайшие',   sets:3,reps:10,weight:28},
+  {id:'e08',emoji:'🔩',name:'СТАНОВАЯ ТЯГА',      cat:'Спина',  meta:'Штанга · Спина + ноги',  sets:4,reps:6, weight:100},
+  {id:'e09',emoji:'🦵',name:'ПРИСЕДАНИЯ',         cat:'Ноги',   meta:'Штанга · Квадрицепс',    sets:4,reps:8, weight:80},
+  {id:'e10',emoji:'🏃',name:'ЖИМ НОГАМИ',        cat:'Ноги',   meta:'Тренажёр · Квадрицепс',  sets:4,reps:12,weight:120},
+  {id:'e11',emoji:'🦿',name:'РУМЫНСКАЯ ТЯГА',     cat:'Ноги',   meta:'Штанга · Бицепс бедра',  sets:3,reps:10,weight:60},
+  {id:'e12',emoji:'📏',name:'ВЫПАДЫ',             cat:'Ноги',   meta:'Гантели · Ноги',         sets:3,reps:12,weight:20},
+  {id:'e13',emoji:'🐃',name:'ПОДЪЁМ НА НОСКИ',   cat:'Ноги',   meta:'Тренажёр · Икры',        sets:4,reps:15,weight:70},
+  {id:'e14',emoji:'🎯',name:'ЖИМ ГАНТЕЛЕЙ СИДЯ', cat:'Плечи',  meta:'Гантели · Дельты',       sets:3,reps:12,weight:18},
+  {id:'e15',emoji:'🔺',name:'ЖИМ ШТАНГИ СТОЯ',   cat:'Плечи',  meta:'Штанга · Дельты',        sets:4,reps:8, weight:40},
+  {id:'e16',emoji:'↗️',name:'МАХИ В СТОРОНЫ',    cat:'Плечи',  meta:'Гантели · Сред. дельты', sets:3,reps:15,weight:10},
+  {id:'e17',emoji:'💪',name:'БИЦЕПС СО ШТАНГОЙ', cat:'Руки',   meta:'Штанга · Бицепс',        sets:3,reps:12,weight:30},
+  {id:'e18',emoji:'🏗️',name:'МОЛОТКИ',           cat:'Руки',   meta:'Гантели · Бицепс',       sets:3,reps:12,weight:16},
+  {id:'e19',emoji:'📉',name:'ФРАНЦУЗСКИЙ ЖИМ',   cat:'Руки',   meta:'Штанга · Трицепс',       sets:3,reps:12,weight:25},
+  {id:'e20',emoji:'⬇️',name:'РАЗГИБАНИЯ БЛОК',   cat:'Руки',   meta:'Блок · Трицепс',         sets:3,reps:15,weight:30},
+  {id:'e21',emoji:'🏃',name:'БЕГ',               cat:'Кардио', meta:'Дорожка · Выносливость', sets:1,reps:20,weight:0 },
+  {id:'e22',emoji:'🚴',name:'ВЕЛОТРЕНАЖЁР',       cat:'Кардио', meta:'Кардио · Ноги',          sets:1,reps:20,weight:0 },
+  {id:'e23',emoji:'🪜',name:'ЭЛЛИПСОИД',          cat:'Кардио', meta:'Кардио · Всё тело',      sets:1,reps:30,weight:0 },
+  {id:'e24',emoji:'🎽',name:'СКРУЧИВАНИЯ',        cat:'Пресс',  meta:'Вес тела · Пресс',       sets:3,reps:20,weight:0 },
+  {id:'e25',emoji:'🪵',name:'ПЛАНКА',             cat:'Пресс',  meta:'Вес тела · Кор',         sets:3,reps:60,weight:0 },
+  {id:'e26',emoji:'🦵',name:'ПОДЪЁМ НОГ В ВИСЕ', cat:'Пресс',  meta:'Турник · Нижний пресс',  sets:3,reps:15,weight:0 },
 ];
 
 if (!BOT_TOKEN) {
