@@ -16,6 +16,9 @@ const els = {
   ratingView: document.getElementById('ratingView'),
   accountView: document.getElementById('accountView'),
   bottomNav: document.getElementById('bottomNav'),
+  heroCover: document.getElementById('heroCover'),
+  characterStage: document.getElementById('characterStage'),
+  characterModel: document.getElementById('characterModel'),
   title: document.getElementById('hero-title'),
   rank: document.getElementById('heroRank'),
   heroImage: document.getElementById('heroImage'),
@@ -30,6 +33,10 @@ const els = {
   attrEndurance: document.getElementById('attrEndurance'),
   choiceGrid: document.getElementById('choiceGrid'),
   heroEvolution: document.getElementById('heroEvolution'),
+  visualStage: document.getElementById('visualStage'),
+  visualUpgrade: document.getElementById('visualUpgrade'),
+  visualFrame: document.getElementById('visualFrame'),
+  evolutionList: document.getElementById('evolutionList'),
   syncStatus: document.getElementById('syncStatus'),
   loadout: document.getElementById('loadout'),
   nextMilestone: document.getElementById('nextMilestone'),
@@ -91,6 +98,7 @@ function render(nextState) {
   els.rank.textContent = hero.rank;
   els.heroImage.src = hero.image;
   els.heroImage.alt = hero.archetype;
+  renderCharacterVisual(hero);
   els.heroClass.textContent = hero.className;
   els.heroPower.textContent = hero.power;
   els.syncStatus.textContent = profile.username ? `@${profile.username}` : 'Telegram ID';
@@ -115,8 +123,31 @@ function render(nextState) {
   ].join('');
   els.loadout.innerHTML = hero.loadout.map(loadoutTemplate).join('');
   els.nextMilestone.textContent = hero.nextMilestone;
+  els.evolutionList.innerHTML = hero.visual.unlocked.map(evolutionTemplate).join('');
   renderRating();
   renderAccountPanel();
+}
+
+function renderCharacterVisual(hero) {
+  const visual = hero.visual;
+  els.heroCover.dataset.theme = visual.theme;
+  els.characterStage.dataset.theme = visual.theme;
+  els.characterStage.style.setProperty('--hero-scale', visual.scale);
+  els.characterStage.style.setProperty('--hero-rotate', `${visual.rotate}deg`);
+  els.characterStage.style.setProperty('--hero-rotate-alt', `${visual.rotate * -1}deg`);
+  els.characterStage.style.setProperty('--aura-size', `${visual.auraLevel * 1.15}rem`);
+  els.characterStage.style.setProperty('--aura-opacity', String(0.08 + visual.auraLevel * 0.035));
+  els.characterStage.style.setProperty('--aura-glow', `${0.8 + visual.auraLevel * 0.35}rem`);
+  els.characterStage.style.setProperty('--armor-height', `${visual.armorLevel * 0.3}rem`);
+  els.characterStage.style.setProperty('--armor-opacity', String(0.16 + visual.armorLevel * 0.13));
+  els.characterStage.style.setProperty('--muscle-size', `${visual.muscleLevel * 0.38}rem`);
+  els.characterStage.style.setProperty('--muscle-opacity', String(0.12 + visual.muscleLevel * 0.1));
+  els.characterModel.dataset.armor = visual.armorLevel;
+  els.characterModel.dataset.muscle = visual.muscleLevel;
+  els.characterModel.dataset.aura = visual.auraLevel;
+  els.visualStage.textContent = `${visual.levelForm}: ${visual.stageName}`;
+  els.visualUpgrade.textContent = visual.upgradeName;
+  els.visualFrame.textContent = visual.frame;
 }
 
 function renderHeroChoices(hero) {
@@ -156,6 +187,15 @@ function loadoutTemplate(item) {
       <span class="loadout-slot">${escapeHtml(item.slot)}</span>
       <span class="loadout-name">${escapeHtml(item.name)}</span>
       <span class="loadout-state">${item.unlocked ? 'active' : 'locked'}</span>
+    </div>
+  `;
+}
+
+function evolutionTemplate(item, index) {
+  return `
+    <div class="evolution-item">
+      <span>${index + 1}</span>
+      <strong>${escapeHtml(item)}</strong>
     </div>
   `;
 }

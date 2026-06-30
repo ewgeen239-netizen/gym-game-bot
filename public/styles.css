@@ -141,8 +141,7 @@ body.is-choosing .app-shell {
   background: #0b1120;
 }
 
-.choice-media img,
-.hero-cover img {
+.choice-media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -185,20 +184,223 @@ body.is-choosing .app-shell {
   border-radius: var(--radius);
   background: #111827;
   box-shadow: 0 24px 58px rgba(0, 0, 0, 0.38);
+  perspective: 900px;
 }
 
-.hero-cover img {
+.character-stage {
   position: absolute;
   inset: 0;
-  animation: heroDrift 8s ease-in-out infinite;
+  overflow: hidden;
+  --hero-scale: 1.02;
+  --hero-rotate: 4deg;
+  --hero-rotate-alt: -4deg;
+  --aura-size: 1rem;
+  --aura-opacity: 0.12;
+  --aura-glow: 1rem;
+  --armor-height: 0.3rem;
+  --armor-opacity: 0.24;
+  --muscle-size: 0.35rem;
+  --muscle-opacity: 0.2;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(66, 215, 255, var(--aura-opacity)), transparent 13rem),
+    linear-gradient(180deg, #171e31, #080b14 75%);
+}
+
+.character-stage[data-theme="iron"] {
+  background:
+    radial-gradient(circle at 54% 28%, rgba(72, 224, 164, var(--aura-opacity)), transparent 13rem),
+    linear-gradient(180deg, #172333, #080b14 75%);
+}
+
+.character-stage[data-theme="power"] {
+  background:
+    radial-gradient(circle at 48% 28%, rgba(255, 93, 118, var(--aura-opacity)), transparent 13rem),
+    linear-gradient(180deg, #24172f, #080b14 75%);
+}
+
+.stage-floor {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: 4.2rem;
+  height: 6rem;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(66, 215, 255, 0.32), rgba(66, 215, 255, 0.03) 62%, transparent 70%);
+  transform: rotateX(68deg);
+  animation: floorPulse 3.4s ease-in-out infinite;
+}
+
+.character-stage[data-theme="iron"] .stage-floor {
+  background: radial-gradient(ellipse, rgba(72, 224, 164, 0.32), rgba(72, 224, 164, 0.03) 62%, transparent 70%);
+}
+
+.character-stage[data-theme="power"] .stage-floor {
+  background: radial-gradient(ellipse, rgba(255, 93, 118, 0.32), rgba(255, 93, 118, 0.03) 62%, transparent 70%);
+}
+
+.aura-ring {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: calc(11rem + var(--aura-size));
+  height: calc(15rem + var(--aura-size));
+  border: 2px solid rgba(66, 215, 255, 0.34);
+  border-radius: 50%;
+  filter: blur(0.2px);
+  transform: translate(-50%, -50%) rotateY(58deg) rotateZ(-8deg);
+  animation: auraOrbit 5.8s linear infinite;
+}
+
+.aura-ring-two {
+  width: calc(13rem + var(--aura-size));
+  height: calc(13rem + var(--aura-size));
+  border-color: rgba(248, 199, 92, 0.28);
+  animation-duration: 7.2s;
+  animation-direction: reverse;
+}
+
+.character-stage[data-theme="iron"] .aura-ring {
+  border-color: rgba(72, 224, 164, 0.36);
+}
+
+.character-stage[data-theme="power"] .aura-ring {
+  border-color: rgba(255, 93, 118, 0.36);
+}
+
+.character-model {
+  position: absolute;
+  left: 50%;
+  top: 43%;
+  width: min(72%, 21rem);
+  aspect-ratio: 3 / 4;
+  transform: translate(-50%, -50%) rotateY(var(--hero-rotate)) rotateX(3deg) scale(var(--hero-scale));
+  transform-style: preserve-3d;
+  animation: characterBreathe 4.2s ease-in-out infinite;
+}
+
+.character-model img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  object-fit: cover;
+  box-shadow:
+    0 2rem 4rem rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  transform: translateZ(1.6rem);
+  filter: saturate(1.12) contrast(1.05);
+}
+
+.armor-piece,
+.muscle-boost,
+.power-blade {
+  position: absolute;
+  pointer-events: none;
+  opacity: var(--armor-opacity);
+  transform: translateZ(3rem);
+}
+
+.armor-shoulders {
+  left: 12%;
+  right: 12%;
+  top: 39%;
+  height: calc(1.8rem + var(--armor-height));
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(66, 215, 255, 0.9), rgba(248, 199, 92, 0.85), transparent);
+  box-shadow: 0 0 var(--aura-glow) rgba(66, 215, 255, 0.52);
+}
+
+.armor-core {
+  left: 28%;
+  right: 28%;
+  top: 48%;
+  height: calc(5.4rem + var(--armor-height));
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  border-radius: 34% 34% 18% 18%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(66, 215, 255, 0.18));
+}
+
+.armor-belt {
+  left: 23%;
+  right: 23%;
+  top: 64%;
+  height: calc(0.85rem + var(--armor-height));
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(248, 199, 92, 0.95), rgba(255, 93, 118, 0.75));
+}
+
+.muscle-boost {
+  top: 45%;
+  width: calc(2.2rem + var(--muscle-size));
+  height: calc(5rem + var(--muscle-size));
+  border-radius: 999px;
+  background: radial-gradient(ellipse, rgba(255, 255, 255, 0.34), rgba(72, 224, 164, 0.2) 52%, transparent 70%);
+  opacity: var(--muscle-opacity);
+}
+
+.boost-left {
+  left: 13%;
+  transform: translateZ(3rem) rotate(-14deg);
+}
+
+.boost-right {
+  right: 13%;
+  transform: translateZ(3rem) rotate(14deg);
+}
+
+.power-blade {
+  right: 7%;
+  top: 31%;
+  width: 0.34rem;
+  height: calc(4rem + var(--aura-size));
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent, rgba(66, 215, 255, 0.9), transparent);
+  box-shadow: 0 0 1rem rgba(66, 215, 255, 0.8);
+  animation: bladePulse 2.8s ease-in-out infinite;
+}
+
+.character-stage[data-theme="iron"] .armor-shoulders,
+.character-stage[data-theme="iron"] .power-blade {
+  background: linear-gradient(90deg, transparent, rgba(72, 224, 164, 0.9), rgba(248, 199, 92, 0.8), transparent);
+  box-shadow: 0 0 var(--aura-glow) rgba(72, 224, 164, 0.52);
+}
+
+.character-stage[data-theme="power"] .armor-shoulders,
+.character-stage[data-theme="power"] .power-blade {
+  background: linear-gradient(90deg, transparent, rgba(255, 93, 118, 0.92), rgba(248, 199, 92, 0.82), transparent);
+  box-shadow: 0 0 var(--aura-glow) rgba(255, 93, 118, 0.52);
+}
+
+.character-model[data-armor="1"] .armor-core,
+.character-model[data-armor="1"] .armor-belt,
+.character-model[data-armor="1"] .power-blade,
+.character-model[data-armor="2"] .armor-belt {
+  opacity: 0;
+}
+
+.character-model[data-muscle="1"] .muscle-boost {
+  opacity: 0.08;
+}
+
+.stage-shadow {
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 5.4rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.46);
+  filter: blur(0.8rem);
+  animation: shadowBreathe 4.2s ease-in-out infinite;
 }
 
 .hero-cover-gradient {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(8, 11, 20, 0.08), rgba(8, 11, 20, 0.08) 42%, rgba(8, 11, 20, 0.92)),
-    linear-gradient(90deg, rgba(8, 11, 20, 0.68), transparent 58%);
+    linear-gradient(180deg, rgba(8, 11, 20, 0.03), rgba(8, 11, 20, 0.18) 48%, rgba(8, 11, 20, 0.98)),
+    linear-gradient(90deg, rgba(8, 11, 20, 0.76), transparent 62%);
 }
 
 .hero-cover-content {
@@ -206,6 +408,7 @@ body.is-choosing .app-shell {
   left: 1rem;
   right: 1rem;
   bottom: 1rem;
+  text-shadow: 0 0.15rem 0.8rem rgba(0, 0, 0, 0.65);
 }
 
 .hero-tags {
@@ -232,6 +435,26 @@ body.is-choosing .app-shell {
 .hero-tags span:first-child {
   color: #15100a;
   background: var(--gold);
+}
+
+.visual-status {
+  margin-top: 0.8rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius);
+  background: rgba(8, 11, 20, 0.62);
+  backdrop-filter: blur(10px);
+}
+
+.visual-status strong,
+.visual-status span {
+  display: block;
+}
+
+.visual-status span {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .level-card,
@@ -278,12 +501,13 @@ label span {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
   margin-top: 1rem;
 }
 
 .stats-grid article {
+  min-width: 0;
   padding: 0.95rem;
 }
 
@@ -408,7 +632,8 @@ input:focus {
 .loadout-list,
 .quest-list,
 .item-list,
-.leader-list {
+.leader-list,
+.evolution-list {
   display: grid;
   gap: 0.7rem;
   margin-top: 1rem;
@@ -442,6 +667,31 @@ input:focus {
 
 .loadout-state {
   text-align: right;
+}
+
+.evolution-item {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: 0.7rem;
+  align-items: center;
+  min-height: 2.9rem;
+  padding: 0.7rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.evolution-item span {
+  display: grid;
+  place-items: center;
+  min-height: 2rem;
+  border-radius: 6px;
+  background: rgba(66, 215, 255, 0.14);
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.evolution-item strong {
+  font-size: 0.88rem;
 }
 
 .milestone {
@@ -533,10 +783,12 @@ input:focus {
 
 .subtab,
 .nav-tab {
+  min-width: 0;
   min-height: 2.55rem;
   border-radius: 6px;
   color: var(--muted);
   background: transparent;
+  font-size: 0.76rem;
   font-weight: 800;
 }
 
@@ -552,8 +804,9 @@ input:focus {
   right: auto;
   bottom: max(0.75rem, env(safe-area-inset-bottom));
   z-index: 20;
-  width: min(calc(100% - 1.5rem), 29.5rem);
-  grid-template-columns: repeat(4, 1fr);
+  width: calc(100vw - 1.5rem);
+  max-width: 29.5rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   transform: translateX(-50%);
   background: rgba(11, 16, 29, 0.9);
   backdrop-filter: blur(18px);
@@ -588,13 +841,58 @@ input:focus {
   transform: translateY(0);
 }
 
-@keyframes heroDrift {
+@keyframes characterBreathe {
   0%,
   100% {
-    transform: scale(1.02) translateY(0);
+    transform: translate(-50%, -50%) rotateY(var(--hero-rotate)) rotateX(3deg) scale(var(--hero-scale)) translateY(0);
   }
   50% {
-    transform: scale(1.06) translateY(-0.7rem);
+    transform: translate(-50%, -50%) rotateY(var(--hero-rotate-alt)) rotateX(5deg) scale(calc(var(--hero-scale) + 0.025)) translateY(-0.45rem);
+  }
+}
+
+@keyframes shadowBreathe {
+  0%,
+  100% {
+    transform: scale(0.95);
+    opacity: 0.56;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.34;
+  }
+}
+
+@keyframes auraOrbit {
+  from {
+    transform: translate(-50%, -50%) rotateY(58deg) rotateZ(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotateY(58deg) rotateZ(360deg);
+  }
+}
+
+@keyframes floorPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: rotateX(68deg) scale(0.96);
+  }
+  50% {
+    opacity: 0.9;
+    transform: rotateX(68deg) scale(1.05);
+  }
+}
+
+@keyframes bladePulse {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: translateZ(3rem) translateY(0);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translateZ(3rem) translateY(-0.35rem);
   }
 }
 

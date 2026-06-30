@@ -308,6 +308,131 @@ function getEvolutionText(user) {
   ][stage];
 }
 
+function getLevelVisual(user) {
+  const level = Math.max(1, user.level);
+  const stage = Math.min(12, level);
+  const armorLevel = Math.min(5, Math.floor((level + 1) / 2));
+  const auraLevel = Math.min(5, Math.floor((level + 2) / 2));
+  const muscleLevel = Math.min(5, Math.floor(level / 2));
+  const rankLabel = level >= 12 ? 'Legend form' : `Level ${level} form`;
+
+  const maps = {
+    athlete: {
+      theme: 'iron',
+      frame: '3D Iron Body',
+      stageNames: [
+        'Разминка новичка',
+        'База включена',
+        'Плечи просыпаются',
+        'Железный корсет',
+        'Силовой силуэт',
+        'Пояс атлета',
+        'Плотная форма',
+        'PR-режим',
+        'Броня зала',
+        'Тяжелый атлет',
+        'Peak Performer',
+        'Iron Legend'
+      ],
+      upgrades: [
+        'Стартовая форма',
+        'Перчатки новичка',
+        'Больше объема плеч',
+        'Пояс стабильности',
+        'Сильнее грудь и спина',
+        'Наколенники и контроль',
+        'Плотнее руки',
+        'PR-свечение',
+        'Жилет атлета',
+        'Железная стойка',
+        'Элитная форма',
+        'Легендарный режим'
+      ]
+    },
+    sportswoman: {
+      theme: 'power',
+      frame: '3D Power Form',
+      stageNames: [
+        'Старт формы',
+        'Ритм тренировок',
+        'Сильные плечи',
+        'Корсет силы',
+        'Атлетичный силуэт',
+        'Пояс контроля',
+        'Power tempo',
+        'PR confidence',
+        'Броня фокуса',
+        'Elite strength',
+        'Peak form',
+        'Power Legend'
+      ],
+      upgrades: [
+        'Стартовая форма',
+        'Перчатки и тонус',
+        'Больше силы рук',
+        'Сильный корпус',
+        'Прокачка ног и спины',
+        'Пояс контроля',
+        'Уверенная форма',
+        'PR-аура',
+        'Броня фокуса',
+        'Элитный темп',
+        'Пиковая форма',
+        'Легендарная сила'
+      ]
+    },
+    tema: {
+      theme: 'storm',
+      frame: '3D Tempest Armor',
+      stageNames: [
+        'Slime spark',
+        'Tempest pulse',
+        'Storm trainee',
+        'Magic guard',
+        'Awakened core',
+        'Blue armor',
+        'Tempest blade',
+        'PR storm',
+        'Demon lord aura',
+        'Vanguard form',
+        'Storm sovereign',
+        'Rimuru Legend'
+      ],
+      upgrades: [
+        'Слабая синяя аура',
+        'Пульс энергии',
+        'Плечевая защита',
+        'Магический корсет',
+        'Пробужденное ядро',
+        'Синяя броня',
+        'Клинок Tempest',
+        'Шторм PR',
+        'Темная аура',
+        'Форма авангарда',
+        'Суверен шторма',
+        'Легендарный Rimuru'
+      ]
+    }
+  };
+
+  const config = maps[user.heroType] || maps.tema;
+  const index = Math.min(config.stageNames.length - 1, stage - 1);
+
+  return {
+    theme: config.theme,
+    frame: config.frame,
+    levelForm: rankLabel,
+    stageName: config.stageNames[index],
+    upgradeName: config.upgrades[index],
+    armorLevel,
+    auraLevel,
+    muscleLevel,
+    scale: Math.round((1 + Math.min(level, 12) * 0.018) * 100) / 100,
+    rotate: Math.min(10, 3 + Math.floor(level / 2)),
+    unlocked: config.upgrades.slice(0, index + 1)
+  };
+}
+
 function serializeUser(user) {
   const daily = getDaily(user);
   const activeWorkout = getActiveWorkout(user);
@@ -343,6 +468,7 @@ function serializeUser(user) {
       description: getHeroDefinition(user).copy,
       evolutionStage: getEvolutionStage(user),
       evolutionText: getEvolutionText(user),
+      visual: getLevelVisual(user),
       className: getHeroClass(user),
       title: getHeroTitle(user),
       power: Math.round(user.totalSets * 1.8 + user.totalWorkouts * 12 + user.level * 25),

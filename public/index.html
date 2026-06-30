@@ -23,8 +23,22 @@
     </section>
 
     <section class="view" id="heroView">
-      <article class="hero-cover">
-        <img id="heroImage" src="/assets/rimuru-tempest.jpg" alt="">
+      <article class="hero-cover" id="heroCover">
+        <div class="character-stage" id="characterStage">
+          <div class="stage-floor"></div>
+          <div class="aura-ring aura-ring-one"></div>
+          <div class="aura-ring aura-ring-two"></div>
+          <div class="character-model" id="characterModel">
+            <img id="heroImage" src="/assets/rimuru-tempest.jpg" alt="">
+            <span class="armor-piece armor-shoulders"></span>
+            <span class="armor-piece armor-core"></span>
+            <span class="armor-piece armor-belt"></span>
+            <span class="muscle-boost boost-left"></span>
+            <span class="muscle-boost boost-right"></span>
+            <span class="power-blade"></span>
+          </div>
+          <div class="stage-shadow"></div>
+        </div>
         <div class="hero-cover-gradient"></div>
         <div class="hero-cover-content">
           <p class="eyebrow">Gym RPG profile</p>
@@ -33,6 +47,10 @@
             <span id="heroRank">C</span>
             <span id="heroClass">Rookie Hero</span>
             <span id="syncStatus">Telegram</span>
+          </div>
+          <div class="visual-status">
+            <strong id="visualStage">Level form</strong>
+            <span id="visualUpgrade">Прокачка загружается...</span>
           </div>
         </div>
       </article>
@@ -126,6 +144,14 @@
         </div>
         <div class="loadout-list" id="loadout"></div>
         <p class="milestone" id="nextMilestone">Следующая цель появится после первого подхода.</p>
+      </section>
+
+      <section class="rpg-card">
+        <div class="section-heading">
+          <h2>Видоизменение</h2>
+          <span id="visualFrame">3D form</span>
+        </div>
+        <div class="evolution-list" id="evolutionList"></div>
       </section>
 
       <section class="quest-card">
