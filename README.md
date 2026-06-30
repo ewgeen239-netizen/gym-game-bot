@@ -13,9 +13,16 @@ Telegram bot + Telegram Mini App for gym workouts that feels like a small RPG: e
 
 - Dark RPG-style Telegram Mini App.
 - Bot button that opens the Mini App when `APP_URL` is configured.
-- Hero profile: class, power, rank, level, XP progress, streak.
+- First-launch character choice:
+  - Tema's RPG character;
+  - classic gym athlete;
+  - sportswoman athlete.
+- Hero profile: class, evolution stage, power, rank, level, XP progress, streak.
 - Fast workout flow: start workout, log exercise, weight, and reps.
 - XP, levels, streaks, and personal records.
+- Telegram sync by Telegram ID, so the same Telegram account keeps one hero profile.
+- Bottom Mini App tabs: PR, achievements, leaderboard, and history.
+- Leaderboard across all players stored in the same app database.
 - Daily quests:
   - log 3 sets today;
   - finish a workout today.
@@ -68,8 +75,9 @@ http://localhost:3000/?devUser=715467947
 5. Optional but recommended: add a Railway Volume and set `DATA_FILE=/data/gym-game-bot.json`, so bot data survives redeploys.
 6. Redeploy.
 7. Open the bot and send `/start`: https://t.me/gymgamepanda_bot
+8. Press `Open Mini App`, choose a character, and log the first set.
 
-The bot sets its Telegram menu button automatically when `APP_URL` exists.
+The bot sets its Telegram menu button automatically when `APP_URL` exists. `/start` is intentionally short; send `подробнее` or `/details` in the bot to get the full explanation.
 
 Railway will run:
 

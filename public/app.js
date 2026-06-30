@@ -4,6 +4,7 @@ tg?.expand();
 
 let state = null;
 let activeTab = 'prs';
+let leaderboard = null;
 const initData = tg?.initData || '';
 const devUser = new URLSearchParams(window.location.search).get('devUser');
 
@@ -20,6 +21,10 @@ const els = {
   attrStrength: document.getElementById('attrStrength'),
   attrDiscipline: document.getElementById('attrDiscipline'),
   attrEndurance: document.getElementById('attrEndurance'),
+  characterChoice: document.getElementById('characterChoice'),
+  choiceGrid: document.getElementById('choiceGrid'),
+  heroEvolution: document.getElementById('heroEvolution'),
+  syncStatus: document.getElementById('syncStatus'),
   loadout: document.getElementById('loadout'),
   nextMilestone: document.getElementById('nextMilestone'),
   startWorkout: document.getElementById('startWorkout'),
@@ -67,9 +72,10 @@ function render(nextState) {
 
   els.title.textContent = profile.name;
   els.rank.textContent = hero.rank;
-  els.initial.textContent = profile.name.slice(0, 1).toUpperCase();
+  els.initial.textContent = hero.avatar || profile.name.slice(0, 1).toUpperCase();
   els.heroClass.textContent = hero.className;
   els.heroPower.textContent = hero.power;
+  els.syncStatus.textContent = profile.username ? `@${profile.username}` : 'Telegram ID';
   els.heroLevel.textContent = `Level ${profile.level}`;
   els.heroXp.textContent = `${profile.xpInLevel} / ${profile.nextLevelXp} XP`;
   els.xpFill.style.width = `${xpPercent}%`;
@@ -77,6 +83,7 @@ function render(nextState) {
   els.attrStrength.textContent = hero.attributes.strength;
   els.attrDiscipline.textContent = hero.attributes.discipline;
   els.attrEndurance.textContent = hero.attributes.endurance;
+  els.heroEvolution.textContent = hero.evolutionText;
   els.streak.textContent = `${profile.streak} дн.`;
   els.workouts.textContent = profile.totalWorkouts;
   els.sets.textContent = profile.totalSets;
@@ -90,8 +97,24 @@ function render(nextState) {
   ].join('');
   els.loadout.innerHTML = hero.loadout.map(loadoutTemplate).join('');
   els.nextMilestone.textContent = hero.nextMilestone;
+  renderHeroChoices(hero);
 
   renderTab();
+}
+
+function renderHeroChoices(hero) {
+  els.characterChoice.classList.toggle('is-hidden', !hero.choiceRequired);
+  els.choiceGrid.innerHTML = hero.choices.map((choice) => `
+    <button class="choice-option" data-hero-type="${escapeHtml(choice.key)}" type="button">
+      <span class="choice-avatar">${escapeHtml(choice.avatar)}</span>
+      <strong>${escapeHtml(choice.name)}</strong>
+      <small>${escapeHtml(choice.copy)}</small>
+    </button>
+  `).join('');
+
+  els.choiceGrid.querySelectorAll('[data-hero-type]').forEach((button) => {
+    button.addEventListener('click', () => chooseHero(button.dataset.heroType));
+  });
 }
 
 function questTemplate(title, progress, done) {
@@ -150,6 +173,10 @@ function renderTab() {
     );
   }
 
+  if (activeTab === 'rating') {
+    renderRating();
+  }
+
   if (activeTab === 'history') {
     els.tabContent.innerHTML = listOrEmpty(
       state.recentSets,
@@ -164,6 +191,42 @@ function renderTab() {
         </div>
       `
     );
+  }
+}
+
+function renderRating() {
+  if (!leaderboard) {
+    els.tabContent.innerHTML = '<p class="empty">Загружаю рейтинг игроков...</p>';
+    loadLeaderboard();
+    return;
+  }
+
+  const rows = leaderboard.players.map((player, index) => {
+    const isMe = player.telegramId === state.profile.telegramId;
+    return `
+      <div class="leader-row ${isMe ? 'is-me' : ''}">
+        <span class="leader-rank">#${index + 1}</span>
+        <div>
+          <strong>${escapeHtml(player.name)}</strong>
+          <span>${player.level} lvl · ${player.power} power · ${player.totalWorkouts} трен.</span>
+        </div>
+        <strong>${player.xp} XP</strong>
+      </div>
+    `;
+  }).join('');
+
+  els.tabContent.innerHTML = `
+    <div class="rating-summary">Твой ранг: ${leaderboard.currentRank ? `#${leaderboard.currentRank}` : 'пока нет'}</div>
+    ${rows ? `<div class="leader-list">${rows}</div>` : '<p class="empty">Рейтинг пустой. Первый игрок появится после входа в Mini App.</p>'}
+  `;
+}
+
+async function loadLeaderboard() {
+  try {
+    leaderboard = await api('/api/leaderboard');
+    if (activeTab === 'rating') renderRating();
+  } catch (error) {
+    els.tabContent.innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
   }
 }
 
@@ -186,8 +249,18 @@ async function refresh() {
   render(await api('/api/state'));
 }
 
+async function chooseHero(heroType) {
+  render(await api('/api/hero/choose', {
+    method: 'POST',
+    body: JSON.stringify({ heroType })
+  }));
+  tg?.HapticFeedback?.notificationOccurred('success');
+  showToast('Персонаж выбран');
+}
+
 els.startWorkout.addEventListener('click', async () => {
   render(await api('/api/workout/start', { method: 'POST' }));
+  leaderboard = null;
   tg?.HapticFeedback?.impactOccurred('medium');
   showToast('Тренировка начата');
 });
@@ -196,6 +269,7 @@ els.finishWorkout.addEventListener('click', async () => {
   try {
     const response = await api('/api/workout/finish', { method: 'POST' });
     render(response.state);
+    leaderboard = null;
     tg?.HapticFeedback?.notificationOccurred('success');
     showToast(`+${response.result.xp} XP за тренировку`);
   } catch (error) {
@@ -214,6 +288,7 @@ els.setForm.addEventListener('submit', async (event) => {
       body: JSON.stringify(payload)
     });
     render(response.state);
+    leaderboard = null;
     els.setForm.reset();
     tg?.HapticFeedback?.impactOccurred(response.result.isPr ? 'heavy' : 'light');
     showToast(response.result.isPr ? `Новый PR: +${response.result.xp} XP` : `Подход записан: +${response.result.xp} XP`);

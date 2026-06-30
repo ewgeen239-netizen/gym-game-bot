@@ -23,6 +23,27 @@ const defaultData = {
   users: {}
 };
 
+const HERO_TYPES = {
+  tema: {
+    name: 'Персонаж Темы',
+    className: 'Iron Panda',
+    avatar: 'T',
+    copy: 'Авторский герой Темы: темный профиль, рабочие веса и спокойная охота за прогрессом.'
+  },
+  athlete: {
+    name: 'Спортсмен из зала',
+    className: 'Gym Athlete',
+    avatar: 'A',
+    copy: 'Классический путь: от новичка к заметно более сильному и собранному атлету.'
+  },
+  sportswoman: {
+    name: 'Спортсменка',
+    className: 'Power Athlete',
+    avatar: 'S',
+    copy: 'Женский персонаж: с каждым уровнем больше силы, формы и уверенности в тренировках.'
+  }
+};
+
 async function loadData() {
   try {
     const raw = await fs.readFile(DATA_FILE, 'utf8');
@@ -48,7 +69,8 @@ function getTelegramUserFromCtx(ctx) {
   return {
     id: String(ctx.from.id),
     name: ctx.from.first_name || ctx.from.username || 'Athlete',
-    username: ctx.from.username || ''
+    username: ctx.from.username || '',
+    photoUrl: ''
   };
 }
 
@@ -59,6 +81,8 @@ function getUserByTelegram(telegramUser) {
       telegramId: id,
       name: telegramUser.name || 'Athlete',
       username: telegramUser.username || '',
+      photoUrl: telegramUser.photoUrl || '',
+      heroType: '',
       xp: 0,
       level: 1,
       streak: 0,
@@ -73,6 +97,8 @@ function getUserByTelegram(telegramUser) {
   } else {
     db.users[id].name = telegramUser.name || db.users[id].name;
     db.users[id].username = telegramUser.username || db.users[id].username || '';
+    db.users[id].photoUrl = telegramUser.photoUrl || db.users[id].photoUrl || '';
+    db.users[id].heroType = db.users[id].heroType || '';
   }
   return db.users[id];
 }
@@ -230,6 +256,55 @@ function parseReps(value) {
   return reps;
 }
 
+function getHeroDefinition(user) {
+  return HERO_TYPES[user.heroType] || HERO_TYPES.tema;
+}
+
+function getHeroClass(user) {
+  const hero = getHeroDefinition(user);
+  const stage = getEvolutionStage(user);
+  if (user.heroType === 'athlete') {
+    return ['Gym Rookie', 'Steady Lifter', 'Iron Athlete', 'Peak Performer'][stage];
+  }
+  if (user.heroType === 'sportswoman') {
+    return ['Fit Starter', 'Strong Athlete', 'Power Athlete', 'Elite Form'][stage];
+  }
+  return ['Iron Panda Rookie', 'Quest Panda', 'Iron Panda', 'Panda Vanguard'][stage] || hero.className;
+}
+
+function getEvolutionStage(user) {
+  if (user.level >= 10) return 3;
+  if (user.level >= 6) return 2;
+  if (user.level >= 3) return 1;
+  return 0;
+}
+
+function getEvolutionText(user) {
+  const stage = getEvolutionStage(user);
+  if (user.heroType === 'athlete') {
+    return [
+      'Новичок в зале: техника, база, первые рабочие веса.',
+      'Тело собранее, тренировки стабильнее, веса растут.',
+      'Атлет уже заметно прокачан: больше силы и контроля.',
+      'Финальная форма MVP: уверенный спортсмен с режимом.'
+    ][stage];
+  }
+  if (user.heroType === 'sportswoman') {
+    return [
+      'Стартовая форма: легкий вход, первые привычки и контроль.',
+      'Больше тонуса и силы, тренировки становятся системой.',
+      'Прокачанная спортсменка: уверенная техника и мощный темп.',
+      'Элитная форма: сильная, атлетичная, собранная.'
+    ][stage];
+  }
+  return [
+    'Персонаж Темы просыпается: первый квест - зайти в зал.',
+    'Темный герой набирает форму: веса становятся добычей.',
+    'Iron Panda уже в игре: PR и стрики двигают ранг.',
+    'Vanguard режим: герой держит серию и давит прогресс.'
+  ][stage];
+}
+
 function serializeUser(user) {
   const daily = getDaily(user);
   const activeWorkout = getActiveWorkout(user);
@@ -246,6 +321,8 @@ function serializeUser(user) {
       telegramId: user.telegramId,
       name: user.name,
       username: user.username,
+      photoUrl: user.photoUrl || '',
+      heroType: user.heroType || '',
       xp: user.xp,
       level: user.level,
       xpInLevel,
@@ -255,7 +332,14 @@ function serializeUser(user) {
       totalWorkouts: user.totalWorkouts
     },
     hero: {
-      className: user.totalWorkouts >= 10 ? 'Iron Vanguard' : user.totalSets >= 20 ? 'Quest Lifter' : 'Rookie Hero',
+      choiceRequired: !user.heroType,
+      choices: Object.entries(HERO_TYPES).map(([key, value]) => ({ key, ...value })),
+      archetype: getHeroDefinition(user).name,
+      avatar: getHeroDefinition(user).avatar,
+      description: getHeroDefinition(user).copy,
+      evolutionStage: getEvolutionStage(user),
+      evolutionText: getEvolutionText(user),
+      className: getHeroClass(user),
       title: getHeroTitle(user),
       power: Math.round(user.totalSets * 1.8 + user.totalWorkouts * 12 + user.level * 25),
       rank: user.level >= 10 ? 'S' : user.level >= 6 ? 'A' : user.level >= 3 ? 'B' : 'C',
@@ -351,6 +435,30 @@ function profileText(user) {
   ].join('\n');
 }
 
+function introText() {
+  return [
+    `Gym Game Bot - это Mini App для зала, где тренировки идут как RPG.`,
+    ``,
+    `Что делать: открыть Mini App, выбрать персонажа, начать тренировку и записывать упражнения, веса и повторы.`,
+    ``,
+    `Если хочешь объяснение по всем функциям - напиши: подробнее`
+  ].join('\n');
+}
+
+function detailsText() {
+  return [
+    `Подробнее:`,
+    ``,
+    `1. Открываешь Mini App и выбираешь персонажа.`,
+    `2. Нажимаешь "Начать тренировку".`,
+    `3. Записываешь упражнение, вес и повторы.`,
+    `4. Получаешь XP, уровни, PR, ачивки и закрываешь квесты дня.`,
+    `5. Во вкладке "Рейтинг" сравниваешь прогресс с другими игроками.`,
+    ``,
+    `Синхронизация идет по Telegram ID: один человек = один герой и один прогресс.`
+  ].join('\n');
+}
+
 function questsText(user) {
   const daily = getDaily(user);
   return [
@@ -383,6 +491,7 @@ function mainMenu() {
     Markup.button.callback('Ачивки', 'achievements'),
     Markup.button.callback('Завершить', 'finish_workout')
   ]);
+  rows.push([Markup.button.callback('Подробнее', 'details')]);
   return Markup.inlineKeyboard(rows);
 }
 
@@ -391,20 +500,9 @@ async function replyMenu(ctx, text) {
 }
 
 bot.start(async (ctx) => {
-  const user = getUser(ctx);
+  getUser(ctx);
   await saveData(db);
-  await replyMenu(
-    ctx,
-    [
-      `Добро пожаловать в Gym Game Bot.`,
-      ``,
-      APP_URL
-        ? `Жми "Открыть Mini App": там тёмный RPG-профиль героя, старт тренировки, XP, квесты и веса.`
-        : `Добавь APP_URL в Railway Variables, чтобы появилась кнопка Mini App.`,
-      ``,
-      profileText(user)
-    ].join('\n')
-  );
+  await replyMenu(ctx, introText());
 });
 
 bot.help(async (ctx) => {
@@ -415,6 +513,7 @@ bot.help(async (ctx) => {
       `/profile - профиль`,
       `/quests - ежедневные квесты`,
       `/achievements - ачивки`,
+      `/details - подробнее`,
       ``,
       APP_URL ? `Mini App: ${APP_URL}` : `Mini App включится после настройки APP_URL.`
     ].join('\n'),
@@ -422,6 +521,7 @@ bot.help(async (ctx) => {
   );
 });
 
+bot.command('details', async (ctx) => replyMenu(ctx, detailsText()));
 bot.command('profile', async (ctx) => replyMenu(ctx, profileText(getUser(ctx))));
 bot.command('quests', async (ctx) => replyMenu(ctx, questsText(getUser(ctx))));
 bot.command('achievements', async (ctx) => replyMenu(ctx, achievementsText(getUser(ctx))));
@@ -439,6 +539,11 @@ bot.action('quests', async (ctx) => {
 bot.action('achievements', async (ctx) => {
   await ctx.answerCbQuery();
   await replyMenu(ctx, achievementsText(getUser(ctx)));
+});
+
+bot.action('details', async (ctx) => {
+  await ctx.answerCbQuery();
+  await replyMenu(ctx, detailsText());
 });
 
 bot.action('start_workout', async (ctx) => {
@@ -480,10 +585,16 @@ bot.action('finish_workout', async (ctx) => {
 
 bot.on('text', async (ctx) => {
   const id = String(ctx.from.id);
+  const rawText = ctx.message.text.trim();
+  if (/^подробнее$/i.test(rawText)) {
+    await replyMenu(ctx, detailsText());
+    return;
+  }
+
   const session = sessions.get(id);
   if (!session) return;
 
-  const text = ctx.message.text.trim();
+  const text = rawText;
   if (session.step === 'exercise') {
     session.exercise = normalizeExercise(text);
     session.step = 'weight';
@@ -553,7 +664,8 @@ function parseInitData(initData) {
   return {
     id: String(user.id),
     name: user.first_name || user.username || 'Athlete',
-    username: user.username || ''
+    username: user.username || '',
+    photoUrl: user.photo_url || ''
   };
 }
 
@@ -587,6 +699,41 @@ app.get('/health', (req, res) => {
 app.get('/api/state', authMiniApp, async (req, res) => {
   await saveData(db);
   res.json(serializeUser(req.user));
+});
+
+app.post('/api/hero/choose', authMiniApp, async (req, res) => {
+  const heroType = String(req.body.heroType || '');
+  if (!HERO_TYPES[heroType]) {
+    res.status(400).json({ error: 'Unknown hero type.' });
+    return;
+  }
+
+  req.user.heroType = heroType;
+  await saveData(db);
+  res.json(serializeUser(req.user));
+});
+
+app.get('/api/leaderboard', authMiniApp, (req, res) => {
+  const players = Object.values(db.users)
+    .map((user) => ({
+      telegramId: user.telegramId,
+      name: user.name,
+      username: user.username,
+      heroType: user.heroType || '',
+      level: user.level,
+      xp: user.xp,
+      power: Math.round(user.totalSets * 1.8 + user.totalWorkouts * 12 + user.level * 25),
+      totalSets: user.totalSets,
+      totalWorkouts: user.totalWorkouts,
+      streak: user.streak
+    }))
+    .sort((a, b) => b.xp - a.xp || b.power - a.power || b.totalWorkouts - a.totalWorkouts);
+
+  const currentRank = players.findIndex((player) => player.telegramId === req.user.telegramId) + 1;
+  res.json({
+    currentRank: currentRank || null,
+    players: players.slice(0, 20)
+  });
 });
 
 app.post('/api/workout/start', authMiniApp, async (req, res) => {
@@ -623,6 +770,16 @@ app.post('/api/workout/finish', authMiniApp, async (req, res) => {
 bot.catch((error, ctx) => {
   console.error(`Bot error for update ${ctx.update?.update_id}:`, error);
 });
+
+if (process.env.SKIP_BOT !== '1') {
+  await bot.telegram.setMyCommands([
+    { command: 'start', description: 'Открыть меню' },
+    { command: 'details', description: 'Как работает Gym RPG' },
+    { command: 'profile', description: 'Профиль героя' },
+    { command: 'quests', description: 'Квесты дня' },
+    { command: 'achievements', description: 'Ачивки' }
+  ]);
+}
 
 if (APP_URL && process.env.SKIP_BOT !== '1') {
   await bot.telegram.setChatMenuButton({

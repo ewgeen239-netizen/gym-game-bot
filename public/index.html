@@ -22,6 +22,15 @@
       <div class="hero-rank" id="heroRank">C</div>
     </section>
 
+    <section class="choice-card" id="characterChoice">
+      <div class="section-heading">
+        <h2>Выбор персонажа</h2>
+        <span>первый вход</span>
+      </div>
+      <p class="choice-copy">Выбери героя. Потом весь прогресс, уровни и рейтинг будут синхронизироваться с твоим Telegram.</p>
+      <div class="choice-grid" id="choiceGrid"></div>
+    </section>
+
     <section class="character-card">
       <div class="avatar-frame">
         <div class="avatar-core">
@@ -36,6 +45,10 @@
         <div class="meta-row">
           <span>Power</span>
           <strong id="heroPower">0</strong>
+        </div>
+        <div class="meta-row">
+          <span>Синхронизация</span>
+          <strong id="syncStatus">Telegram</strong>
         </div>
         <div class="level-line">
           <div>
@@ -101,6 +114,7 @@
         <h2>Персонаж</h2>
         <span id="heroTitle">Новобранец</span>
       </div>
+      <p class="hero-evolution" id="heroEvolution">Прокачка появится после выбора персонажа.</p>
       <div class="attribute-grid">
         <div class="attribute">
           <span>Сила</span>
@@ -130,6 +144,7 @@
     <section class="tabs">
       <button class="tab is-active" data-tab="prs" type="button">PR</button>
       <button class="tab" data-tab="achievements" type="button">Ачивки</button>
+      <button class="tab" data-tab="rating" type="button">Рейтинг</button>
       <button class="tab" data-tab="history" type="button">История</button>
     </section>
 

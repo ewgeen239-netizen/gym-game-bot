@@ -46,15 +46,79 @@ button {
 }
 
 .hero-panel,
+.choice-card,
 .character-card,
 .set-card,
 .quest-card,
 .list-card,
+.rpg-card,
 .stats-grid article {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+.choice-card {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-color: rgba(71, 240, 183, 0.28);
+}
+
+.choice-card.is-hidden {
+  display: none;
+}
+
+.choice-copy,
+.hero-evolution,
+.rating-summary {
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.choice-grid {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.9rem;
+}
+
+.choice-option {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr;
+  grid-template-rows: auto auto;
+  gap: 0.15rem 0.75rem;
+  align-items: center;
+  min-height: 4.6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.055);
+  text-align: left;
+}
+
+.choice-option:active {
+  transform: translateY(1px);
+}
+
+.choice-avatar {
+  grid-row: 1 / 3;
+  display: grid;
+  place-items: center;
+  width: 3.2rem;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  background: rgba(71, 240, 183, 0.12);
+  color: var(--accent);
+  font-weight: 900;
+  font-size: 1.3rem;
+}
+
+.choice-option small {
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .hero-panel {
@@ -379,13 +443,51 @@ input:focus {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.45rem;
   margin-top: 1rem;
   padding: 0.3rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.04);
+}
+
+.leader-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+
+.leader-row {
+  display: grid;
+  grid-template-columns: 2.6rem 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  min-height: 3.1rem;
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.leader-row.is-me {
+  border: 1px solid rgba(71, 240, 183, 0.36);
+  background: rgba(71, 240, 183, 0.08);
+}
+
+.leader-rank {
+  display: grid;
+  place-items: center;
+  min-height: 2rem;
+  border-radius: 6px;
+  color: var(--gold);
+  background: rgba(248, 199, 92, 0.1);
+  font-weight: 900;
+  font-size: 0.78rem;
+}
+
+.leader-row span {
+  color: var(--muted);
+  font-size: 0.76rem;
 }
 
 .tab {
@@ -439,5 +541,9 @@ input:focus {
 
   .attribute-grid {
     grid-template-columns: 1fr;
+  }
+
+  .tabs {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
