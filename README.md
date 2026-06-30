@@ -2,6 +2,13 @@
 
 Telegram bot for gym workouts that feels like a small game: exercises and working weights are the core, with XP, levels, daily quests, streaks, achievements, and PR tracking on top.
 
+## Links
+
+- Telegram bot: https://t.me/gymgamepanda_bot
+- GitHub repo: https://github.com/ewgeen239-netizen/gym-game-bot
+- BotFather: https://t.me/BotFather
+- Railway dashboard: https://railway.com/dashboard
+
 ## Features
 
 - Dark game-style text UX for Telegram.
@@ -42,13 +49,37 @@ npm start
 1. Create a Telegram bot through `@BotFather`.
 2. Add `BOT_TOKEN` in Railway variables.
 3. Optional but recommended: add a Railway Volume and set `DATA_FILE=/data/gym-game-bot.json`, so bot data survives redeploys.
-4. Deploy from this GitHub repo.
+4. Deploy from this GitHub repo: https://github.com/ewgeen239-netizen/gym-game-bot
+5. After deploy, open the bot and send `/start`: https://t.me/gymgamepanda_bot
 
 Railway will run:
 
 ```bash
 npm start
 ```
+
+Required Railway variable:
+
+```text
+BOT_TOKEN=your_token_from_botfather
+```
+
+Recommended Railway variable when a Volume is mounted at `/data`:
+
+```text
+DATA_FILE=/data/gym-game-bot.json
+```
+
+## Run Anywhere
+
+Any server that supports Node.js 20+ can run this bot:
+
+```bash
+npm install
+BOT_TOKEN=your_token npm start
+```
+
+Keep the token out of GitHub. Use environment variables on Railway, VPS, Render, Fly.io, or any other host.
 
 ## MVP Notes
 
