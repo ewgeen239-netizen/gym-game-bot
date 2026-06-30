@@ -8,6 +8,10 @@ let activeView = ['hero', 'training', 'rating', 'account'].includes(initialView)
 let activePanel = 'prs';
 let leaderboard = null;
 let threeScene = null;
+let modelYaw = 0;
+let isRotatingModel = false;
+let lastModelPointerX = 0;
+let threeControlsBound = false;
 const initData = tg?.initData || '';
 const devUser = new URLSearchParams(window.location.search).get('devUser');
 
@@ -151,7 +155,7 @@ function renderCharacterVisual(hero) {
   els.characterModel.dataset.muscle = visual.muscleLevel;
   els.characterModel.dataset.aura = visual.auraLevel;
   els.visualStage.textContent = `${visual.levelForm}: ${visual.stageName}`;
-  els.visualUpgrade.textContent = visual.upgradeName;
+  els.visualUpgrade.textContent = `Сейчас: ${visual.upgradeName} · Дальше: ${visual.nextUpgradeName}`;
   els.visualFrame.textContent = visual.frame;
 }
 
@@ -286,7 +290,7 @@ async function ensureThreeScene() {
       modelRoot.add(gltf.scene);
       modelRoot.scale.setScalar(1.75);
       modelRoot.position.set(0, -1.65, 0);
-      modelRoot.rotation.y = Math.PI;
+      modelRoot.rotation.y = 0;
       gltf.scene.traverse((item) => {
         if (item.isMesh) {
           item.castShadow = false;
@@ -299,12 +303,42 @@ async function ensureThreeScene() {
       });
     });
     resizeThreeScene();
+    bindThreeCharacterControls();
     window.addEventListener('resize', resizeThreeScene);
     animateThreeScene();
   } catch {
     els.threeCharacter.hidden = true;
   }
   return threeScene;
+}
+
+function bindThreeCharacterControls() {
+  if (threeControlsBound) return;
+  threeControlsBound = true;
+
+  els.threeCharacter.addEventListener('pointerdown', (event) => {
+    isRotatingModel = true;
+    lastModelPointerX = event.clientX;
+    els.threeCharacter.setPointerCapture?.(event.pointerId);
+  });
+
+  els.threeCharacter.addEventListener('pointermove', (event) => {
+    if (!isRotatingModel) return;
+    const delta = event.clientX - lastModelPointerX;
+    lastModelPointerX = event.clientX;
+    modelYaw += delta * 0.012;
+  });
+
+  const stopRotating = (event) => {
+    isRotatingModel = false;
+    els.threeCharacter.releasePointerCapture?.(event.pointerId);
+  };
+
+  els.threeCharacter.addEventListener('pointerup', stopRotating);
+  els.threeCharacter.addEventListener('pointercancel', stopRotating);
+  els.threeCharacter.addEventListener('lostpointercapture', () => {
+    isRotatingModel = false;
+  });
 }
 
 function resizeThreeScene() {
@@ -318,7 +352,8 @@ function resizeThreeScene() {
 function animateThreeScene() {
   if (!threeScene) return;
   const tick = performance.now() / 1000;
-  threeScene.group.rotation.y = Math.sin(tick * 0.8) * 0.28;
+  const idleTurn = isRotatingModel ? 0 : Math.sin(tick * 0.8) * 0.12;
+  threeScene.group.rotation.y = modelYaw + idleTurn;
   threeScene.group.position.y = Math.sin(tick * 1.4) * 0.05;
   threeScene.parts.ring.rotation.z = tick * 0.7;
   threeScene.parts.halo.rotation.z = tick * 0.95;

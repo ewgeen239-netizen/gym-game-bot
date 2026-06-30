@@ -406,6 +406,7 @@ function getLevelVisual(user) {
 
   const config = maps[user.heroType] || maps.tema;
   const index = Math.min(config.stageNames.length - 1, stage - 1);
+  const nextIndex = Math.min(config.stageNames.length - 1, index + 1);
 
   return {
     theme: config.theme,
@@ -415,6 +416,8 @@ function getLevelVisual(user) {
     levelForm: rankLabel,
     stageName: config.stageNames[index],
     upgradeName: config.upgrades[index],
+    nextStageName: config.stageNames[nextIndex],
+    nextUpgradeName: nextIndex === index ? 'Финальная форма открыта' : config.upgrades[nextIndex],
     armorLevel,
     auraLevel,
     muscleLevel,
