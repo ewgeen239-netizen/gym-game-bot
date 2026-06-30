@@ -13,14 +13,6 @@ const LEVEL_STEP = 200;
 const PLAN_COMPLETE_XP = 80;
 const PLAN_FAIL_XP = 40;
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const APP_URL = process.env.APP_URL || '';
-const DATA_FILE = process.env.DATA_FILE || './data/gym-game-bot.json';
-const PORT = Number(process.env.PORT || 3000);
-const LEVEL_STEP = 200;
-const PLAN_COMPLETE_XP = 80;
-const PLAN_FAIL_XP = 40;
-
 const EXERCISE_CATALOG = [
   'Жим лежа',
   'Приседания',
