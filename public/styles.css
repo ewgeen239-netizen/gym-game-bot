@@ -76,7 +76,6 @@ body.is-choosing .app-shell {
   display: block;
 }
 
-.choice-head,
 .page-head,
 .level-card,
 .action-card,
@@ -91,12 +90,10 @@ body.is-choosing .app-shell {
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.3);
 }
 
-.choice-head,
 .page-head {
   padding: 1rem;
 }
 
-.choice-head p,
 .page-head p,
 .milestone,
 .empty {
@@ -110,73 +107,6 @@ body.is-choosing .app-shell {
   font-size: 0.72rem;
   font-weight: 900;
   text-transform: uppercase;
-}
-
-.choice-grid {
-  display: grid;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.choice-option {
-  display: grid;
-  grid-template-columns: 7.2rem 1fr;
-  gap: 0.9rem;
-  min-height: 9.2rem;
-  padding: 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  color: var(--text);
-  background: rgba(9, 19, 36, 0.82);
-  text-align: left;
-  overflow: hidden;
-}
-
-.choice-option:active {
-  transform: translateY(1px);
-}
-
-.choice-media {
-  display: block;
-  overflow: hidden;
-  min-height: 7.7rem;
-  border-radius: var(--radius);
-  background: #0b1120;
-}
-
-.choice-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.choice-media img {
-  animation: portraitFloat 4.5s ease-in-out infinite;
-}
-
-.choice-body {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 0;
-}
-
-.choice-body strong {
-  font-size: 1.18rem;
-}
-
-.choice-body small {
-  margin-top: 0.25rem;
-  color: var(--accent);
-  font-weight: 800;
-}
-
-.choice-body em {
-  margin-top: 0.65rem;
-  color: var(--muted);
-  font-size: 0.82rem;
-  font-style: normal;
-  line-height: 1.4;
 }
 
 .hero-cover {
@@ -227,9 +157,9 @@ body.is-choosing .app-shell {
   z-index: 4;
   width: 100%;
   height: 100%;
-  opacity: 0.9;
+  opacity: 1;
   pointer-events: none;
-  mix-blend-mode: screen;
+  mix-blend-mode: normal;
 }
 
 .stage-floor {
@@ -306,7 +236,8 @@ body.is-choosing .app-shell {
     0 2rem 4rem rgba(0, 0, 0, 0.45),
     inset 0 0 0 1px rgba(255, 255, 255, 0.18);
   transform: translateZ(1.6rem);
-  filter: saturate(1.12) contrast(1.05);
+  opacity: 0.07;
+  filter: saturate(0.8) contrast(0.9);
 }
 
 .armor-piece,
@@ -418,8 +349,8 @@ body.is-choosing .app-shell {
   inset: 0;
   z-index: 5;
   background:
-    linear-gradient(180deg, rgba(8, 11, 20, 0.03), rgba(8, 11, 20, 0.18) 48%, rgba(8, 11, 20, 0.98)),
-    linear-gradient(90deg, rgba(8, 11, 20, 0.76), transparent 62%);
+    linear-gradient(180deg, rgba(8, 11, 20, 0.08), rgba(8, 11, 20, 0.26) 48%, rgba(8, 11, 20, 0.98)),
+    linear-gradient(90deg, rgba(8, 11, 20, 0.78), transparent 64%);
 }
 
 .hero-cover-content {
@@ -985,10 +916,6 @@ select:focus {
 @media (max-width: 390px) {
   h1 {
     font-size: 1.72rem;
-  }
-
-  .choice-option {
-    grid-template-columns: 6.2rem 1fr;
   }
 
   .hero-cover {

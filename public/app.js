@@ -12,7 +12,6 @@ const initData = tg?.initData || '';
 const devUser = new URLSearchParams(window.location.search).get('devUser');
 
 const els = {
-  choiceView: document.getElementById('choiceView'),
   heroView: document.getElementById('heroView'),
   trainingView: document.getElementById('trainingView'),
   ratingView: document.getElementById('ratingView'),
@@ -34,7 +33,6 @@ const els = {
   attrStrength: document.getElementById('attrStrength'),
   attrDiscipline: document.getElementById('attrDiscipline'),
   attrEndurance: document.getElementById('attrEndurance'),
-  choiceGrid: document.getElementById('choiceGrid'),
   heroEvolution: document.getElementById('heroEvolution'),
   visualStage: document.getElementById('visualStage'),
   visualUpgrade: document.getElementById('visualUpgrade'),
@@ -94,16 +92,10 @@ function render(nextState) {
   const { profile, hero, daily, activeWorkout } = state;
   const xpPercent = Math.min(100, Math.round((profile.xpInLevel / profile.nextLevelXp) * 100));
 
-  renderHeroChoices(hero);
   renderExerciseSelects();
-  const needsChoice = hero.choiceRequired;
-  document.body.classList.toggle('is-choosing', needsChoice);
-  els.choiceView.classList.toggle('is-active', needsChoice);
-  els.bottomNav.hidden = needsChoice;
-
-  if (!needsChoice) {
-    showView(activeView);
-  }
+  document.body.classList.remove('is-choosing');
+  els.bottomNav.hidden = false;
+  showView(activeView);
 
   els.title.textContent = hero.archetype;
   els.rank.textContent = hero.rank;
@@ -161,25 +153,6 @@ function renderCharacterVisual(hero) {
   els.visualStage.textContent = `${visual.levelForm}: ${visual.stageName}`;
   els.visualUpgrade.textContent = visual.upgradeName;
   els.visualFrame.textContent = visual.frame;
-}
-
-function renderHeroChoices(hero) {
-  els.choiceGrid.innerHTML = hero.choices.map((choice) => `
-    <button class="choice-option" data-hero-type="${escapeHtml(choice.key)}" type="button">
-      <span class="choice-media">
-        <img src="${escapeHtml(choice.image)}" alt="${escapeHtml(choice.name)}">
-      </span>
-      <span class="choice-body">
-        <strong>${escapeHtml(choice.name)}</strong>
-        <small>${escapeHtml(choice.className)}</small>
-        <em>${escapeHtml(choice.copy)}</em>
-      </span>
-    </button>
-  `).join('');
-
-  els.choiceGrid.querySelectorAll('[data-hero-type]').forEach((button) => {
-    button.addEventListener('click', () => chooseHero(button.dataset.heroType));
-  });
 }
 
 function questTemplate(title, progress, done) {
@@ -252,7 +225,7 @@ async function ensureThreeScene() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
-    camera.position.set(0, 1.2, 5.2);
+    camera.position.set(0, 1.05, 4.1);
     scene.add(new THREE.HemisphereLight(0xd9f2ff, 0x07101c, 2.4));
     const keyLight = new THREE.DirectionalLight(0x7cc8ff, 3);
     keyLight.position.set(2.8, 4.5, 3.2);
@@ -311,8 +284,8 @@ async function ensureThreeScene() {
     const loader = new GLTFLoader();
     loader.load('/assets/models/base_basic_shaded.glb', (gltf) => {
       modelRoot.add(gltf.scene);
-      modelRoot.scale.setScalar(1.18);
-      modelRoot.position.set(0, -1.15, 0);
+      modelRoot.scale.setScalar(1.75);
+      modelRoot.position.set(0, -1.65, 0);
       modelRoot.rotation.y = Math.PI;
       gltf.scene.traverse((item) => {
         if (item.isMesh) {
@@ -373,8 +346,8 @@ async function updateThreeCharacter(hero) {
   const heightBoost = 1 + level * 0.012;
 
   scene.group.scale.set(0.86 + muscle * 0.035, 0.86 + level * 0.018, 0.86 + muscle * 0.025);
-  scene.modelRoot.scale.setScalar(1.05 + level * 0.025 + muscle * 0.025);
-  scene.modelRoot.position.y = -1.18 + level * 0.015;
+  scene.modelRoot.scale.setScalar(1.65 + level * 0.035 + muscle * 0.05);
+  scene.modelRoot.position.y = -1.7 + level * 0.02;
   scene.parts.body.scale.set(widthBoost, heightBoost, widthBoost);
   scene.parts.head.scale.setScalar(1 + level * 0.006);
   scene.parts.leftArm.scale.set(1 + muscle * 0.08, 1 + muscle * 0.055, 1 + muscle * 0.08);
@@ -397,11 +370,10 @@ async function updateThreeCharacter(hero) {
 
 function showView(view) {
   activeView = view;
-  const isChoice = state?.hero.choiceRequired;
-  els.heroView.classList.toggle('is-active', !isChoice && view === 'hero');
-  els.trainingView.classList.toggle('is-active', !isChoice && view === 'training');
-  els.ratingView.classList.toggle('is-active', !isChoice && view === 'rating');
-  els.accountView.classList.toggle('is-active', !isChoice && view === 'account');
+  els.heroView.classList.toggle('is-active', view === 'hero');
+  els.trainingView.classList.toggle('is-active', view === 'training');
+  els.ratingView.classList.toggle('is-active', view === 'rating');
+  els.accountView.classList.toggle('is-active', view === 'account');
 
   document.querySelectorAll('.nav-tab').forEach((tab) => {
     tab.classList.toggle('is-active', tab.dataset.view === view);
@@ -512,16 +484,6 @@ function escapeHtml(value) {
 
 async function refresh() {
   render(await api('/api/state'));
-}
-
-async function chooseHero(heroType) {
-  activeView = 'hero';
-  render(await api('/api/hero/choose', {
-    method: 'POST',
-    body: JSON.stringify({ heroType })
-  }));
-  tg?.HapticFeedback?.notificationOccurred('success');
-  showToast('Персонаж выбран');
 }
 
 els.startWorkout.addEventListener('click', async () => {

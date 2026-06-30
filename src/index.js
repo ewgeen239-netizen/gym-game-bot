@@ -47,20 +47,6 @@ const HERO_TYPES = {
     avatar: 'R',
     image: '/assets/rimuru-tempest-card.jpg',
     copy: 'Герой Темы: спокойный, холодный стиль, уровни силы и эволюция через каждую тренировку.'
-  },
-  athlete: {
-    name: 'Спортсмен из зала',
-    className: 'Gym Athlete',
-    avatar: 'A',
-    image: '/assets/gym-athlete.svg',
-    copy: 'Классический путь: от новичка к заметно более сильному и собранному атлету.'
-  },
-  sportswoman: {
-    name: 'Спортсменка',
-    className: 'Power Athlete',
-    avatar: 'S',
-    image: '/assets/sportswoman.svg',
-    copy: 'Женский персонаж: с каждым уровнем больше силы, формы и уверенности в тренировках.'
   }
 };
 
@@ -102,7 +88,7 @@ function getUserByTelegram(telegramUser) {
       name: telegramUser.name || 'Athlete',
       username: telegramUser.username || '',
       photoUrl: telegramUser.photoUrl || '',
-      heroType: '',
+      heroType: 'tema',
       xp: 0,
       level: 1,
       streak: 0,
@@ -119,7 +105,7 @@ function getUserByTelegram(telegramUser) {
     db.users[id].name = telegramUser.name || db.users[id].name;
     db.users[id].username = telegramUser.username || db.users[id].username || '';
     db.users[id].photoUrl = telegramUser.photoUrl || db.users[id].photoUrl || '';
-    db.users[id].heroType = db.users[id].heroType || '';
+    db.users[id].heroType = 'tema';
     db.users[id].trainingPlan = normalizeTrainingPlan(db.users[id].trainingPlan);
   }
   return db.users[id];
@@ -355,12 +341,6 @@ function getHeroDefinition(user) {
 function getHeroClass(user) {
   const hero = getHeroDefinition(user);
   const stage = getEvolutionStage(user);
-  if (user.heroType === 'athlete') {
-    return ['Gym Rookie', 'Steady Lifter', 'Iron Athlete', 'Peak Performer'][stage];
-  }
-  if (user.heroType === 'sportswoman') {
-    return ['Fit Starter', 'Strong Athlete', 'Power Athlete', 'Elite Form'][stage];
-  }
   return ['Slime Rookie', 'Storm Trainee', 'Rimuru Awakened', 'Tempest Vanguard'][stage] || hero.className;
 }
 
@@ -373,22 +353,6 @@ function getEvolutionStage(user) {
 
 function getEvolutionText(user) {
   const stage = getEvolutionStage(user);
-  if (user.heroType === 'athlete') {
-    return [
-      'Новичок в зале: техника, база, первые рабочие веса.',
-      'Тело собранее, тренировки стабильнее, веса растут.',
-      'Атлет уже заметно прокачан: больше силы и контроля.',
-      'Финальная форма MVP: уверенный спортсмен с режимом.'
-    ][stage];
-  }
-  if (user.heroType === 'sportswoman') {
-    return [
-      'Стартовая форма: легкий вход, первые привычки и контроль.',
-      'Больше тонуса и силы, тренировки становятся системой.',
-      'Прокачанная спортсменка: уверенная техника и мощный темп.',
-      'Элитная форма: сильная, атлетичная, собранная.'
-    ][stage];
-  }
   return [
     'Rimuru Tempest просыпается: первый квест - зайти в зал.',
     'Storm Slime набирает форму: веса становятся добычей.',
@@ -406,70 +370,6 @@ function getLevelVisual(user) {
   const rankLabel = level >= 12 ? 'Legend form' : `Level ${level} form`;
 
   const maps = {
-    athlete: {
-      theme: 'iron',
-      frame: '3D Iron Body',
-      stageNames: [
-        'Разминка новичка',
-        'База включена',
-        'Плечи просыпаются',
-        'Железный корсет',
-        'Силовой силуэт',
-        'Пояс атлета',
-        'Плотная форма',
-        'PR-режим',
-        'Броня зала',
-        'Тяжелый атлет',
-        'Peak Performer',
-        'Iron Legend'
-      ],
-      upgrades: [
-        'Стартовая форма',
-        'Перчатки новичка',
-        'Больше объема плеч',
-        'Пояс стабильности',
-        'Сильнее грудь и спина',
-        'Наколенники и контроль',
-        'Плотнее руки',
-        'PR-свечение',
-        'Жилет атлета',
-        'Железная стойка',
-        'Элитная форма',
-        'Легендарный режим'
-      ]
-    },
-    sportswoman: {
-      theme: 'power',
-      frame: '3D Power Form',
-      stageNames: [
-        'Старт формы',
-        'Ритм тренировок',
-        'Сильные плечи',
-        'Корсет силы',
-        'Атлетичный силуэт',
-        'Пояс контроля',
-        'Power tempo',
-        'PR confidence',
-        'Броня фокуса',
-        'Elite strength',
-        'Peak form',
-        'Power Legend'
-      ],
-      upgrades: [
-        'Стартовая форма',
-        'Перчатки и тонус',
-        'Больше силы рук',
-        'Сильный корпус',
-        'Прокачка ног и спины',
-        'Пояс контроля',
-        'Уверенная форма',
-        'PR-аура',
-        'Броня фокуса',
-        'Элитный темп',
-        'Пиковая форма',
-        'Легендарная сила'
-      ]
-    },
     tema: {
       theme: 'storm',
       frame: '3D Tempest Armor',
@@ -542,7 +442,7 @@ function serializeUser(user) {
       name: user.name,
       username: user.username,
       photoUrl: user.photoUrl || '',
-      heroType: user.heroType || '',
+      heroType: 'tema',
       xp: user.xp,
       level: user.level,
       xpInLevel,
@@ -552,8 +452,6 @@ function serializeUser(user) {
       totalWorkouts: user.totalWorkouts
     },
     hero: {
-      choiceRequired: !user.heroType,
-      choices: Object.entries(HERO_TYPES).map(([key, value]) => ({ key, ...value })),
       archetype: getHeroDefinition(user).name,
       avatar: getHeroDefinition(user).avatar,
       image: getHeroDefinition(user).image,
@@ -927,18 +825,6 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api/state', authMiniApp, async (req, res) => {
-  await saveData(db);
-  res.json(serializeUser(req.user));
-});
-
-app.post('/api/hero/choose', authMiniApp, async (req, res) => {
-  const heroType = String(req.body.heroType || '');
-  if (!HERO_TYPES[heroType]) {
-    res.status(400).json({ error: 'Unknown hero type.' });
-    return;
-  }
-
-  req.user.heroType = heroType;
   await saveData(db);
   res.json(serializeUser(req.user));
 });
