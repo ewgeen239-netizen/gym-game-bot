@@ -12,6 +12,7 @@ const PORT = Number(process.env.PORT || 3000);
 const LEVEL_STEP = 200;
 const PLAN_COMPLETE_XP = 80;
 const PLAN_FAIL_XP = 40;
+const ADMIN_LEVEL_100_IDS = new Set(['6166155438']);
 
 const EXERCISE_CATALOG = [
   'Жим лежа',
@@ -108,7 +109,21 @@ function getUserByTelegram(telegramUser) {
     db.users[id].heroType = 'tema';
     db.users[id].trainingPlan = normalizeTrainingPlan(db.users[id].trainingPlan);
   }
+  if (applyAdminLevelBoost(db.users[id])) {
+    saveData(db).catch((error) => console.error('Failed to save admin level boost:', error));
+  }
   return db.users[id];
+}
+
+function applyAdminLevelBoost(user) {
+  if (!ADMIN_LEVEL_100_IDS.has(String(user.telegramId))) return false;
+  const targetXp = (100 - 1) * LEVEL_STEP;
+  if (user.xp < targetXp || user.level < 100) {
+    user.xp = Math.max(user.xp, targetXp);
+    user.level = 100;
+    return true;
+  }
+  return false;
 }
 
 function getUser(ctx) {
