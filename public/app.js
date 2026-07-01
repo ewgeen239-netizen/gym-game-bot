@@ -1,6 +1,7 @@
 const tg = window.Telegram?.WebApp;
 tg?.ready();
 tg?.expand();
+tg?.disableVerticalSwipes?.();
 
 let state = null;
 const initialView = new URLSearchParams(window.location.search).get('view');
@@ -19,6 +20,54 @@ let sheetDragCurrentY = 0;
 let isDraggingSheet = false;
 const initData = tg?.initData || '';
 const devUser = new URLSearchParams(window.location.search).get('devUser');
+
+const EQUIPMENT_ASSETS = [
+  {
+    key: 'shield',
+    url: '/assets/equipment/vanguard_shield.glb',
+    level: 3,
+    height: 1.05,
+    position: [-0.78, 0.06, 0.2],
+    rotation: [0, Math.PI / 2.7, 0.08],
+    fallback: ['shield', 'shieldCore', 'crest']
+  },
+  {
+    key: 'shoulders',
+    url: '/assets/equipment/storm_shoulders.glb',
+    level: 4,
+    height: 0.72,
+    position: [0, 0.58, 0.03],
+    rotation: [0, 0, 0],
+    fallback: ['shoulder', 'core']
+  },
+  {
+    key: 'wings',
+    url: '/assets/equipment/aura_wings.glb',
+    level: 5,
+    height: 1.42,
+    position: [0, 0.18, -0.28],
+    rotation: [0, Math.PI / 2, 0],
+    fallback: ['halo', 'ring']
+  },
+  {
+    key: 'blade',
+    url: '/assets/equipment/tempest_blade.glb',
+    level: 7,
+    height: 1.22,
+    position: [0.9, -0.08, 0.2],
+    rotation: [0.05, 0.18, -0.43],
+    fallback: ['blade', 'bladeGuard']
+  },
+  {
+    key: 'armor',
+    url: '/assets/equipment/legend_armor.glb',
+    level: 10,
+    height: 1.28,
+    position: [0, -0.08, 0.05],
+    rotation: [0, 0, 0],
+    fallback: ['core', 'belt']
+  }
+];
 
 const els = {
   heroView: document.getElementById('heroView'),
@@ -228,8 +277,8 @@ async function ensureThreeScene() {
     const renderer = new THREE.WebGLRenderer({ canvas: els.threeCharacter, alpha: true, antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
-    camera.position.set(0, 1.05, 4.45);
+    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    camera.position.set(0, 1.18, 4.7);
     scene.add(new THREE.HemisphereLight(0xd9f2ff, 0x07101c, 2.4));
     const keyLight = new THREE.DirectionalLight(0x7cc8ff, 3);
     keyLight.position.set(2.8, 4.5, 3.2);
@@ -239,6 +288,8 @@ async function ensureThreeScene() {
     scene.add(group);
     const modelRoot = new THREE.Group();
     group.add(modelRoot);
+    const equipmentRoot = new THREE.Group();
+    group.add(equipmentRoot);
     const armor = new THREE.MeshStandardMaterial({ color: 0x12274a, metalness: 0.68, roughness: 0.24, side: THREE.DoubleSide });
     const bladeMaterial = new THREE.MeshStandardMaterial({ color: 0xd8f5ff, metalness: 0.82, roughness: 0.18 });
     const shieldMaterial = new THREE.MeshStandardMaterial({ color: 0x1a4d7f, metalness: 0.72, roughness: 0.26, side: THREE.DoubleSide });
@@ -282,12 +333,30 @@ async function ensureThreeScene() {
     group.add(ring);
 
     const parts = { shoulder, core, belt, blade, bladeGuard, halo, shield, shieldCore, crest, ring };
-    threeScene = { THREE, renderer, scene, camera, group, modelRoot, armor, bladeMaterial, shieldMaterial, aura, parts, ring, usingModel: false };
+    threeScene = {
+      THREE,
+      renderer,
+      scene,
+      camera,
+      group,
+      modelRoot,
+      equipmentRoot,
+      equipment: {},
+      equipmentReady: {},
+      armor,
+      bladeMaterial,
+      shieldMaterial,
+      aura,
+      parts,
+      ring,
+      usingModel: false
+    };
     const loader = new GLTFLoader();
+    loadEquipmentAssets(loader, THREE);
     loader.load('/assets/models/base_basic_shaded.glb', (gltf) => {
       modelRoot.add(gltf.scene);
       modelRoot.scale.setScalar(1.95);
-      modelRoot.position.set(0, -1.72, 0);
+      modelRoot.position.set(0, -1.56, 0);
       modelRoot.rotation.y = 0;
       gltf.scene.traverse((item) => {
         if (item.isMesh) {
@@ -305,6 +374,44 @@ async function ensureThreeScene() {
     els.threeCharacter.hidden = true;
   }
   return threeScene;
+}
+
+function loadEquipmentAssets(loader, THREE) {
+  EQUIPMENT_ASSETS.forEach((config) => {
+    loader.load(config.url, (gltf) => {
+      const wrapper = new THREE.Group();
+      const object = gltf.scene;
+      wrapper.add(object);
+
+      const box = new THREE.Box3().setFromObject(object);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(center);
+      object.position.sub(center);
+
+      const fitScale = config.height / Math.max(0.01, size.y);
+      wrapper.scale.setScalar(fitScale);
+      wrapper.position.set(...config.position);
+      wrapper.rotation.set(...config.rotation);
+      wrapper.visible = false;
+
+      object.traverse((item) => {
+        if (item.isMesh) {
+          item.frustumCulled = false;
+          if (item.material) {
+            item.material.side = THREE.DoubleSide;
+            item.material.needsUpdate = true;
+          }
+        }
+      });
+
+      threeScene.equipmentRoot.add(wrapper);
+      threeScene.equipment[config.key] = wrapper;
+      threeScene.equipmentReady[config.key] = true;
+      if (state?.hero) updateThreeCharacter(state.hero);
+    });
+  });
 }
 
 function bindHeroRevealControls() {
@@ -364,11 +471,11 @@ function setHeroFullView(enabled) {
 function updateThreeCameraMode() {
   if (!threeScene) return;
   if (heroFullView) {
-    threeScene.camera.position.set(0, 1.12, 6.15);
-    threeScene.camera.fov = 38;
+    threeScene.camera.position.set(0, 1.08, 6.45);
+    threeScene.camera.fov = 39;
   } else {
-    threeScene.camera.position.set(0, 1.05, 4.45);
-    threeScene.camera.fov = 34;
+    threeScene.camera.position.set(0, 1.18, 4.7);
+    threeScene.camera.fov = 35;
   }
   threeScene.camera.updateProjectionMatrix();
 }
@@ -449,7 +556,7 @@ async function updateThreeCharacter(hero) {
     (0.9 + muscle * 0.028) * revealScale
   );
   scene.modelRoot.scale.setScalar((1.92 + level * 0.035 + muscle * 0.045) * revealScale);
-  scene.modelRoot.position.y = (heroFullView ? -1.52 : -1.82) + level * 0.018;
+  scene.modelRoot.position.y = (heroFullView ? -1.34 : -1.58) + level * 0.018;
   scene.parts.shoulder.visible = level >= 2;
   scene.parts.core.visible = level >= 4;
   scene.parts.belt.visible = level >= 6;
@@ -469,6 +576,33 @@ async function updateThreeCharacter(hero) {
   scene.parts.shieldCore.scale.setScalar(0.72 + aura * 0.08);
   scene.parts.crest.scale.setScalar(0.72 + aura * 0.08);
   scene.aura.opacity = 0.12 + aura * 0.035;
+  updateEquipment(hero);
+}
+
+function updateEquipment(hero) {
+  if (!threeScene?.equipment) return;
+  const level = Math.min(12, hero.visual.level || 1);
+  EQUIPMENT_ASSETS.forEach((config) => {
+    const model = threeScene.equipment[config.key];
+    const showRealAsset = Boolean(model && level >= config.level);
+    if (model) {
+      model.visible = showRealAsset;
+      const growth = 1 + Math.max(0, level - config.level) * 0.025;
+      model.scale.setScalar((config.height / getEquipmentHeight(model)) * growth);
+    }
+    config.fallback.forEach((partKey) => {
+      if (threeScene.parts[partKey] && showRealAsset) {
+        threeScene.parts[partKey].visible = false;
+      }
+    });
+  });
+}
+
+function getEquipmentHeight(model) {
+  const box = new threeScene.THREE.Box3().setFromObject(model);
+  const size = new threeScene.THREE.Vector3();
+  box.getSize(size);
+  return Math.max(0.01, size.y / Math.max(0.01, model.scale.y));
 }
 
 function showView(view) {
