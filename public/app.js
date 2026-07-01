@@ -34,7 +34,7 @@ const EQUIPMENT_ASSETS = [
   {
     key: 'shoulders',
     url: '/assets/equipment/storm_shoulders.glb',
-    level: 4,
+    level: 5,
     height: 0.72,
     position: [0, 0.58, 0.03],
     rotation: [0, 0, 0],
@@ -43,7 +43,7 @@ const EQUIPMENT_ASSETS = [
   {
     key: 'wings',
     url: '/assets/equipment/aura_wings.glb',
-    level: 5,
+    level: 7,
     height: 1.42,
     position: [0, 0.18, -0.28],
     rotation: [0, Math.PI / 2, 0],
@@ -52,7 +52,7 @@ const EQUIPMENT_ASSETS = [
   {
     key: 'blade',
     url: '/assets/equipment/tempest_blade.glb',
-    level: 7,
+    level: 9,
     height: 1.22,
     position: [0.9, -0.08, 0.2],
     rotation: [0.05, 0.18, -0.43],
@@ -61,7 +61,7 @@ const EQUIPMENT_ASSETS = [
   {
     key: 'armor',
     url: '/assets/equipment/legend_armor.glb',
-    level: 10,
+    level: 12,
     height: 1.28,
     position: [0, -0.08, 0.05],
     rotation: [0, 0, 0],
@@ -336,6 +336,7 @@ async function ensureThreeScene() {
     group.add(ring);
 
     const parts = { shoulder, core, belt, blade, bladeGuard, halo, shield, shieldCore, crest, ring };
+    const loader = new GLTFLoader();
     threeScene = {
       THREE,
       renderer,
@@ -345,7 +346,9 @@ async function ensureThreeScene() {
       modelRoot,
       equipmentRoot,
       equipment: {},
+      equipmentLoading: {},
       equipmentReady: {},
+      equipmentLoader: loader,
       armor,
       bladeMaterial,
       shieldMaterial,
@@ -354,8 +357,6 @@ async function ensureThreeScene() {
       ring,
       usingModel: false
     };
-    const loader = new GLTFLoader();
-    loadEquipmentAssets(loader, THREE);
     loader.load('/assets/models/base_basic_shaded.glb', (gltf) => {
       modelRoot.add(gltf.scene);
       modelRoot.scale.setScalar(1.95);
@@ -379,44 +380,49 @@ async function ensureThreeScene() {
   return threeScene;
 }
 
-function loadEquipmentAssets(loader, THREE) {
-  EQUIPMENT_ASSETS.forEach((config) => {
-    loader.load(config.url, (gltf) => {
-      const wrapper = new THREE.Group();
-      const object = gltf.scene;
-      wrapper.add(object);
+function loadEquipmentAsset(config) {
+  if (!threeScene || threeScene.equipment[config.key] || threeScene.equipmentLoading[config.key]) return;
+  threeScene.equipmentLoading[config.key] = true;
 
-      const box = new THREE.Box3().setFromObject(object);
-      const size = new THREE.Vector3();
-      const center = new THREE.Vector3();
-      box.getSize(size);
-      box.getCenter(center);
-      object.position.sub(center);
+  threeScene.equipmentLoader.load(config.url, (gltf) => {
+    const { THREE } = threeScene;
+    const wrapper = new THREE.Group();
+    const object = gltf.scene;
+    wrapper.add(object);
 
-      const fitScale = config.height / Math.max(0.01, size.y);
-      wrapper.scale.setScalar(fitScale);
-      wrapper.position.set(...config.position);
-      wrapper.rotation.set(...config.rotation);
-      wrapper.visible = false;
+    const box = new THREE.Box3().setFromObject(object);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+    object.position.sub(center);
 
-      object.traverse((item) => {
-        if (item.isMesh) {
-          item.frustumCulled = false;
-          if (item.material) {
-            item.material.side = THREE.DoubleSide;
-            item.material.envMapIntensity = 0.9;
-            if (item.material.map) item.material.map.anisotropy = 4;
-            if (item.material.normalMap) item.material.normalScale.setScalar(0.85);
-            item.material.needsUpdate = true;
-          }
+    const fitScale = config.height / Math.max(0.01, size.y);
+    wrapper.scale.setScalar(fitScale);
+    wrapper.position.set(...config.position);
+    wrapper.rotation.set(...config.rotation);
+    wrapper.visible = false;
+
+    object.traverse((item) => {
+      if (item.isMesh) {
+        item.frustumCulled = false;
+        if (item.material) {
+          item.material.side = THREE.DoubleSide;
+          item.material.envMapIntensity = 0.9;
+          if (item.material.map) item.material.map.anisotropy = 4;
+          if (item.material.normalMap) item.material.normalScale.setScalar(0.85);
+          item.material.needsUpdate = true;
         }
-      });
-
-      threeScene.equipmentRoot.add(wrapper);
-      threeScene.equipment[config.key] = wrapper;
-      threeScene.equipmentReady[config.key] = true;
-      if (state?.hero) updateThreeCharacter(state.hero);
+      }
     });
+
+    threeScene.equipmentRoot.add(wrapper);
+    threeScene.equipment[config.key] = wrapper;
+    threeScene.equipmentReady[config.key] = true;
+    threeScene.equipmentLoading[config.key] = false;
+    if (state?.hero) updateThreeCharacter(state.hero);
+  }, undefined, () => {
+    threeScene.equipmentLoading[config.key] = false;
   });
 }
 
@@ -589,6 +595,7 @@ function updateEquipment(hero) {
   if (!threeScene?.equipment) return;
   const level = Math.min(12, hero.visual.level || 1);
   EQUIPMENT_ASSETS.forEach((config) => {
+    if (level >= config.level) loadEquipmentAsset(config);
     const model = threeScene.equipment[config.key];
     const showRealAsset = Boolean(model && level >= config.level);
     if (model) {
