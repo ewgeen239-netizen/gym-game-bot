@@ -12,6 +12,11 @@ let modelYaw = 0;
 let isRotatingModel = false;
 let lastModelPointerX = 0;
 let threeControlsBound = false;
+let heroRevealBound = false;
+let heroFullView = false;
+let sheetDragStartY = 0;
+let sheetDragCurrentY = 0;
+let isDraggingSheet = false;
 const initData = tg?.initData || '';
 const devUser = new URLSearchParams(window.location.search).get('devUser');
 
@@ -23,6 +28,7 @@ const els = {
   bottomNav: document.getElementById('bottomNav'),
   threeCharacter: document.getElementById('threeCharacter'),
   heroCover: document.getElementById('heroCover'),
+  heroSheet: document.getElementById('heroSheet'),
   characterStage: document.getElementById('characterStage'),
   title: document.getElementById('hero-title'),
   rank: document.getElementById('heroRank'),
@@ -95,6 +101,7 @@ function render(nextState) {
   const xpPercent = Math.min(100, Math.round((profile.xpInLevel / profile.nextLevelXp) * 100));
 
   renderExerciseSelects();
+  bindHeroRevealControls();
   document.body.classList.remove('is-choosing');
   els.bottomNav.hidden = false;
   showView(activeView);
@@ -222,7 +229,7 @@ async function ensureThreeScene() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
-    camera.position.set(0, 1.05, 4.8);
+    camera.position.set(0, 1.05, 4.45);
     scene.add(new THREE.HemisphereLight(0xd9f2ff, 0x07101c, 2.4));
     const keyLight = new THREE.DirectionalLight(0x7cc8ff, 3);
     keyLight.position.set(2.8, 4.5, 3.2);
@@ -233,7 +240,9 @@ async function ensureThreeScene() {
     const modelRoot = new THREE.Group();
     group.add(modelRoot);
     const armor = new THREE.MeshStandardMaterial({ color: 0x12274a, metalness: 0.68, roughness: 0.24, side: THREE.DoubleSide });
-    const aura = new THREE.MeshBasicMaterial({ color: 0x35d8ff, transparent: true, opacity: 0.22, wireframe: true, side: THREE.DoubleSide });
+    const bladeMaterial = new THREE.MeshStandardMaterial({ color: 0xd8f5ff, metalness: 0.82, roughness: 0.18 });
+    const shieldMaterial = new THREE.MeshStandardMaterial({ color: 0x1a4d7f, metalness: 0.72, roughness: 0.26, side: THREE.DoubleSide });
+    const aura = new THREE.MeshBasicMaterial({ color: 0x35d8ff, transparent: true, opacity: 0.22, side: THREE.DoubleSide });
     const shoulder = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.16, 0.32), armor);
     shoulder.position.y = 0.58;
     group.add(shoulder);
@@ -244,7 +253,7 @@ async function ensureThreeScene() {
     belt.position.y = -0.42;
     belt.rotation.x = Math.PI / 2;
     group.add(belt);
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.05, 0.08), aura);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.05, 0.06), bladeMaterial);
     blade.position.set(0.95, 0.15, 0.18);
     blade.rotation.z = -0.38;
     group.add(blade);
@@ -256,7 +265,7 @@ async function ensureThreeScene() {
     halo.position.y = 1.55;
     halo.rotation.x = Math.PI / 2;
     group.add(halo);
-    const shield = new THREE.Mesh(new THREE.CircleGeometry(0.34, 32), armor);
+    const shield = new THREE.Mesh(new THREE.CircleGeometry(0.34, 32), shieldMaterial);
     shield.position.set(-0.78, 0.08, 0.2);
     shield.rotation.y = 0.35;
     group.add(shield);
@@ -273,12 +282,12 @@ async function ensureThreeScene() {
     group.add(ring);
 
     const parts = { shoulder, core, belt, blade, bladeGuard, halo, shield, shieldCore, crest, ring };
-    threeScene = { THREE, renderer, scene, camera, group, modelRoot, armor, aura, parts, ring, usingModel: false };
+    threeScene = { THREE, renderer, scene, camera, group, modelRoot, armor, bladeMaterial, shieldMaterial, aura, parts, ring, usingModel: false };
     const loader = new GLTFLoader();
     loader.load('/assets/models/base_basic_shaded.glb', (gltf) => {
       modelRoot.add(gltf.scene);
-      modelRoot.scale.setScalar(1.85);
-      modelRoot.position.set(0, -1.65, 0);
+      modelRoot.scale.setScalar(1.95);
+      modelRoot.position.set(0, -1.72, 0);
       modelRoot.rotation.y = 0;
       gltf.scene.traverse((item) => {
         if (item.isMesh) {
@@ -296,6 +305,72 @@ async function ensureThreeScene() {
     els.threeCharacter.hidden = true;
   }
   return threeScene;
+}
+
+function bindHeroRevealControls() {
+  if (heroRevealBound || !els.heroSheet) return;
+  heroRevealBound = true;
+
+  els.heroSheet.addEventListener('pointerdown', (event) => {
+    isDraggingSheet = true;
+    sheetDragStartY = event.clientY;
+    sheetDragCurrentY = heroFullView ? 125 : 0;
+    els.heroSheet.setPointerCapture?.(event.pointerId);
+  });
+
+  els.heroSheet.addEventListener('pointermove', (event) => {
+    if (!isDraggingSheet) return;
+    event.preventDefault();
+    const delta = event.clientY - sheetDragStartY;
+    const nextOffset = Math.max(0, Math.min(145, (heroFullView ? 125 : 0) + delta));
+    sheetDragCurrentY = nextOffset;
+    const progress = nextOffset / 125;
+    els.heroCover.style.setProperty('--sheet-offset', `${nextOffset}px`);
+    els.heroCover.style.setProperty('--sheet-alpha', String(Math.max(0, 1 - progress * 1.35)));
+    els.heroCover.style.setProperty('--scene-veil', String(Math.max(0.28, 1 - progress * 0.72)));
+  });
+
+  const finishSheetDrag = (event) => {
+    if (!isDraggingSheet) return;
+    isDraggingSheet = false;
+    els.heroSheet.releasePointerCapture?.(event.pointerId);
+    setHeroFullView(sheetDragCurrentY > 62);
+  };
+
+  els.heroSheet.addEventListener('pointerup', finishSheetDrag);
+  els.heroSheet.addEventListener('pointercancel', finishSheetDrag);
+  els.heroSheet.addEventListener('lostpointercapture', () => {
+    if (isDraggingSheet) setHeroFullView(sheetDragCurrentY > 62);
+    isDraggingSheet = false;
+  });
+
+  els.heroSheet.addEventListener('click', (event) => {
+    if (Math.abs(event.clientY - sheetDragStartY) > 6) return;
+    setHeroFullView(!heroFullView);
+  });
+}
+
+function setHeroFullView(enabled) {
+  heroFullView = enabled;
+  sheetDragCurrentY = enabled ? 125 : 0;
+  els.heroCover.classList.toggle('is-full-hero', enabled);
+  els.heroCover.style.removeProperty('--sheet-offset');
+  els.heroCover.style.removeProperty('--sheet-alpha');
+  els.heroCover.style.removeProperty('--scene-veil');
+  updateThreeCameraMode();
+  if (state?.hero) updateThreeCharacter(state.hero);
+}
+
+function updateThreeCameraMode() {
+  if (!threeScene) return;
+  if (heroFullView) {
+    threeScene.camera.position.set(0, 1.12, 6.15);
+    threeScene.camera.fov = 38;
+  } else {
+    threeScene.camera.position.set(0, 1.05, 4.45);
+    threeScene.camera.fov = 34;
+  }
+  threeScene.camera.updateProjectionMatrix();
 }
 
 function bindThreeCharacterControls() {
@@ -334,6 +409,7 @@ function resizeThreeScene() {
   const rect = els.threeCharacter.getBoundingClientRect();
   threeScene.renderer.setSize(rect.width, rect.height, false);
   threeScene.camera.aspect = rect.width / Math.max(1, rect.height);
+  updateThreeCameraMode();
   threeScene.camera.updateProjectionMatrix();
 }
 
@@ -359,14 +435,21 @@ async function updateThreeCharacter(hero) {
     power: [0xff5d76, 0x3f1b3d, 0xffa4b6]
   }[hero.visual.theme] || [0x39d8ff, 0x133d8d, 0x7edfff];
   scene.armor.color.setHex(colors[1]);
+  scene.bladeMaterial.color.setHex(colors[2]);
+  scene.shieldMaterial.color.setHex(colors[1]);
   scene.aura.color.setHex(colors[2]);
   const level = Math.min(12, hero.visual.level || 1);
   const muscle = hero.visual.muscleLevel;
   const armor = hero.visual.armorLevel;
   const aura = hero.visual.auraLevel;
-  scene.group.scale.set(0.86 + muscle * 0.035, 0.86 + level * 0.018, 0.86 + muscle * 0.025);
-  scene.modelRoot.scale.setScalar(1.75 + level * 0.03 + muscle * 0.04);
-  scene.modelRoot.position.y = -1.72 + level * 0.018;
+  const revealScale = heroFullView ? 0.9 : 1;
+  scene.group.scale.set(
+    (0.9 + muscle * 0.038) * revealScale,
+    (0.9 + level * 0.02) * revealScale,
+    (0.9 + muscle * 0.028) * revealScale
+  );
+  scene.modelRoot.scale.setScalar((1.92 + level * 0.035 + muscle * 0.045) * revealScale);
+  scene.modelRoot.position.y = (heroFullView ? -1.52 : -1.82) + level * 0.018;
   scene.parts.shoulder.visible = level >= 2;
   scene.parts.core.visible = level >= 4;
   scene.parts.belt.visible = level >= 6;

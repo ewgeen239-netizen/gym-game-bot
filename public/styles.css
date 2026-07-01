@@ -112,12 +112,15 @@ body.is-choosing .app-shell {
 .hero-cover {
   position: relative;
   overflow: hidden;
-  min-height: 32rem;
+  min-height: clamp(34rem, 78vh, 44rem);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #111827;
   box-shadow: 0 24px 58px rgba(0, 0, 0, 0.38);
   perspective: 900px;
+  --sheet-offset: 0px;
+  --sheet-alpha: 1;
+  --scene-veil: 1;
 }
 
 .character-stage {
@@ -175,6 +178,8 @@ body.is-choosing .app-shell {
   inset: 0;
   z-index: 5;
   pointer-events: none;
+  opacity: var(--scene-veil);
+  transition: opacity 0.28s ease;
   background:
     linear-gradient(180deg, rgba(8, 11, 20, 0.08), rgba(8, 11, 20, 0.26) 48%, rgba(8, 11, 20, 0.98)),
     linear-gradient(90deg, rgba(8, 11, 20, 0.78), transparent 64%);
@@ -186,8 +191,47 @@ body.is-choosing .app-shell {
   right: 1rem;
   bottom: 1rem;
   z-index: 6;
-  pointer-events: none;
+  pointer-events: auto;
+  touch-action: none;
+  transform: translateY(var(--sheet-offset));
+  transition: transform 0.28s ease, opacity 0.22s ease;
   text-shadow: 0 0.15rem 0.8rem rgba(0, 0, 0, 0.65);
+}
+
+.hero-sheet-handle {
+  width: 3.4rem;
+  height: 0.28rem;
+  margin: 0 auto 0.75rem;
+  border-radius: 999px;
+  background: rgba(242, 247, 255, 0.5);
+  box-shadow: 0 0 1rem rgba(79, 156, 255, 0.3);
+}
+
+.hero-cover-content h1,
+.hero-tags,
+.visual-status,
+.hero-reveal-hint,
+.hero-cover-content .eyebrow {
+  opacity: var(--sheet-alpha);
+  transition: opacity 0.2s ease;
+}
+
+.hero-reveal-hint {
+  margin-top: 0.65rem;
+  color: rgba(242, 247, 255, 0.74);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.hero-cover.is-full-hero {
+  --sheet-offset: 12.5rem;
+  --sheet-alpha: 0;
+  --scene-veil: 0.28;
+}
+
+.hero-cover.is-full-hero .hero-cover-content {
+  transition-duration: 0.34s;
 }
 
 .hero-tags {
@@ -682,7 +726,11 @@ select:focus {
   }
 
   .hero-cover {
-    min-height: 29rem;
+    min-height: clamp(32rem, 76vh, 40rem);
+  }
+
+  .hero-cover.is-full-hero {
+    --sheet-offset: 11rem;
   }
 
   .attribute-grid {
