@@ -21,9 +21,10 @@ let sheetDragCurrentY = 0;
 let isDraggingSheet = false;
 const initData = tg?.initData || '';
 const devUser = new URLSearchParams(window.location.search).get('devUser');
-const HERO_MODEL_SCALE = 2.18;
-const HERO_MODEL_Y = -1.36;
-const HERO_MODEL_FULL_Y = -1.12;
+const HERO_GROUP_SCALE = 0.92;
+const HERO_MODEL_SCALE = 1.95;
+const HERO_MODEL_Y = -1.54;
+const HERO_MODEL_FULL_Y = -1.32;
 
 const EQUIPMENT_ASSETS = [
   {
@@ -616,8 +617,8 @@ async function updateThreeCharacter(hero) {
   const armor = hero.visual.armorLevel;
   const aura = hero.visual.auraLevel;
   const revealScale = heroFullView ? 0.9 : 1;
-  scene.group.scale.setScalar(revealScale);
-  scene.modelRoot.scale.setScalar(HERO_MODEL_SCALE * revealScale);
+  scene.group.scale.setScalar(HERO_GROUP_SCALE * revealScale);
+  scene.modelRoot.scale.setScalar(HERO_MODEL_SCALE);
   scene.modelRoot.position.y = heroFullView ? HERO_MODEL_FULL_Y : HERO_MODEL_Y;
   Object.values(scene.parts).forEach((part) => {
     part.visible = false;
