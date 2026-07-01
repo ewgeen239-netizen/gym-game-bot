@@ -276,6 +276,9 @@ async function ensureThreeScene() {
     const { GLTFLoader } = await import('/vendor/GLTFLoader.js');
     const renderer = new THREE.WebGLRenderer({ canvas: els.threeCharacter, alpha: true, antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
     camera.position.set(0, 1.18, 4.7);
@@ -401,6 +404,9 @@ function loadEquipmentAssets(loader, THREE) {
           item.frustumCulled = false;
           if (item.material) {
             item.material.side = THREE.DoubleSide;
+            item.material.envMapIntensity = 0.9;
+            if (item.material.map) item.material.map.anisotropy = 4;
+            if (item.material.normalMap) item.material.normalScale.setScalar(0.85);
             item.material.needsUpdate = true;
           }
         }
