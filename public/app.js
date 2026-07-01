@@ -27,45 +27,70 @@ const EQUIPMENT_ASSETS = [
     key: 'shield',
     url: '/assets/equipment/vanguard_shield.glb',
     level: 3,
-    height: 0.88,
-    position: [-1.12, 0.46, 0.34],
+    height: 0.78,
+    position: [-1.36, 1.08, 0.34],
     rotation: [0.04, Math.PI / 2.05, 0.12],
+    orbitRadius: 1.36,
+    orbitHeight: 1.08,
+    orbitDepth: 0.48,
+    orbitSpeed: 0.62,
+    orbitPhase: Math.PI * 1.1,
     fallback: ['shield', 'shieldCore', 'crest']
   },
   {
     key: 'shoulders',
     url: '/assets/equipment/storm_shoulders.glb',
     level: 5,
-    height: 0.66,
-    position: [0, 0.92, 0.06],
+    height: 0.58,
+    position: [0.92, 1.16, -0.12],
     rotation: [0, 0, 0],
+    orbitRadius: 1.02,
+    orbitHeight: 1.16,
+    orbitDepth: 0.34,
+    orbitSpeed: 0.5,
+    orbitPhase: Math.PI * 0.2,
     fallback: ['shoulder', 'core']
   },
   {
     key: 'wings',
     url: '/assets/equipment/aura_wings.glb',
     level: 7,
-    height: 1.22,
-    position: [0, 0.72, -0.42],
+    height: 1.12,
+    position: [0, 1.02, -0.58],
     rotation: [0, Math.PI / 2, 0],
+    orbitRadius: 0.88,
+    orbitHeight: 1.02,
+    orbitDepth: 0.62,
+    orbitSpeed: 0.38,
+    orbitPhase: Math.PI * 1.55,
     fallback: ['halo', 'ring']
   },
   {
     key: 'blade',
     url: '/assets/equipment/tempest_blade.glb',
     level: 9,
-    height: 1.08,
-    position: [1.12, 0.32, 0.28],
+    height: 0.98,
+    position: [1.46, 0.94, 0.32],
     rotation: [0.05, 0.24, -0.52],
+    orbitRadius: 1.46,
+    orbitHeight: 0.94,
+    orbitDepth: 0.46,
+    orbitSpeed: 0.58,
+    orbitPhase: Math.PI * 0.42,
     fallback: ['blade', 'bladeGuard']
   },
   {
     key: 'armor',
     url: '/assets/equipment/legend_armor.glb',
     level: 12,
-    height: 1.12,
-    position: [0, 0.42, 0.08],
+    height: 0.94,
+    position: [1.28, 1.06, 0.28],
     rotation: [0, 0, 0],
+    orbitRadius: 1.28,
+    orbitHeight: 1.06,
+    orbitDepth: 0.42,
+    orbitSpeed: 0.46,
+    orbitPhase: Math.PI * 0.02,
     fallback: ['core', 'belt']
   }
 ];
@@ -406,6 +431,11 @@ function loadEquipmentAsset(config) {
     wrapper.userData.basePosition = wrapper.position.clone();
     wrapper.userData.baseRotation = wrapper.rotation.clone();
     wrapper.userData.floatSeed = EQUIPMENT_ASSETS.findIndex((item) => item.key === config.key) * 0.9;
+    wrapper.userData.orbitRadius = config.orbitRadius || Math.max(0.76, Math.abs(config.position[0]));
+    wrapper.userData.orbitHeight = config.orbitHeight || config.position[1];
+    wrapper.userData.orbitDepth = config.orbitDepth || Math.max(0.28, Math.abs(config.position[2]));
+    wrapper.userData.orbitSpeed = config.orbitSpeed || 0.46;
+    wrapper.userData.orbitPhase = config.orbitPhase || wrapper.userData.floatSeed;
     wrapper.visible = false;
 
     object.traverse((item) => {
@@ -556,14 +586,14 @@ function animateEquipment(tick) {
   Object.values(threeScene.equipment).forEach((model) => {
     if (!model.visible || !model.userData.basePosition) return;
     const seed = model.userData.floatSeed || 0;
-    const float = Math.sin(tick * 1.2 + seed) * 0.045;
-    const orbit = Math.sin(tick * 0.8 + seed) * 0.035;
-    model.position.set(
-      model.userData.basePosition.x + orbit,
-      model.userData.basePosition.y + float,
-      model.userData.basePosition.z
-    );
-    model.rotation.y = model.userData.baseRotation.y + Math.sin(tick * 0.65 + seed) * 0.08;
+    const angle = tick * model.userData.orbitSpeed + model.userData.orbitPhase;
+    const float = Math.sin(tick * 1.35 + seed) * 0.055;
+    const x = Math.cos(angle) * model.userData.orbitRadius;
+    const z = Math.sin(angle) * model.userData.orbitDepth;
+    model.position.set(x, model.userData.orbitHeight + float, z);
+    model.rotation.x = model.userData.baseRotation.x + Math.sin(tick * 0.7 + seed) * 0.035;
+    model.rotation.y = model.userData.baseRotation.y - angle + Math.PI / 2;
+    model.rotation.z = model.userData.baseRotation.z + Math.cos(tick * 0.6 + seed) * 0.035;
   });
 }
 
