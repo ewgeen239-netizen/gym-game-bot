@@ -4,8 +4,9 @@ tg?.expand();
 tg?.disableVerticalSwipes?.();
 
 let state = null;
+const VIEWS = ['hero', 'training', 'rating', 'account'];
 const initialView = new URLSearchParams(window.location.search).get('view');
-let activeView = ['hero', 'training', 'rating', 'account'].includes(initialView) ? initialView : 'hero';
+let activeView = VIEWS.includes(initialView) ? initialView : 'hero';
 let activePanel = 'prs';
 let leaderboard = null;
 let threeScene = null;
@@ -75,6 +76,7 @@ const els = {
   ratingView: document.getElementById('ratingView'),
   accountView: document.getElementById('accountView'),
   bottomNav: document.getElementById('bottomNav'),
+  navGlider: document.getElementById('navGlider'),
   threeCharacter: document.getElementById('threeCharacter'),
   heroCover: document.getElementById('heroCover'),
   heroSheet: document.getElementById('heroSheet'),
@@ -589,15 +591,9 @@ async function updateThreeCharacter(hero) {
   );
   scene.modelRoot.scale.setScalar((1.92 + level * 0.035 + muscle * 0.045) * revealScale);
   scene.modelRoot.position.y = (heroFullView ? -1.34 : -1.58) + level * 0.018;
-  scene.parts.shoulder.visible = level >= 2;
-  scene.parts.core.visible = level >= 4;
-  scene.parts.belt.visible = level >= 6;
-  scene.parts.blade.visible = hero.visual.theme === 'storm' ? level >= 7 : level >= 9;
-  scene.parts.bladeGuard.visible = level >= 7;
-  scene.parts.halo.visible = aura >= 3;
-  scene.parts.shield.visible = level >= 3;
-  scene.parts.shieldCore.visible = level >= 8;
-  scene.parts.crest.visible = level >= 5;
+  Object.values(scene.parts).forEach((part) => {
+    part.visible = false;
+  });
   scene.parts.shoulder.scale.set(0.72 + armor * 0.14, 0.9 + armor * 0.05, 1);
   scene.parts.core.scale.set(0.72 + armor * 0.09, 0.75 + armor * 0.08, 1);
   scene.parts.belt.scale.setScalar(0.76 + armor * 0.08);
@@ -623,11 +619,6 @@ function updateEquipment(hero) {
       const growth = 1 + Math.max(0, level - config.level) * 0.025;
       model.scale.setScalar((config.height / getEquipmentHeight(model)) * growth);
     }
-    config.fallback.forEach((partKey) => {
-      if (threeScene.parts[partKey] && showRealAsset) {
-        threeScene.parts[partKey].visible = false;
-      }
-    });
   });
 }
 
@@ -639,7 +630,7 @@ function getEquipmentHeight(model) {
 }
 
 function showView(view) {
-  if (!['hero', 'training', 'rating', 'account'].includes(view)) return;
+  if (!VIEWS.includes(view)) return;
   activeView = view;
   els.heroView.classList.toggle('is-active', view === 'hero');
   els.trainingView.classList.toggle('is-active', view === 'training');
@@ -649,10 +640,26 @@ function showView(view) {
   document.querySelectorAll('.nav-tab').forEach((tab) => {
     tab.classList.toggle('is-active', tab.dataset.view === view);
   });
+  updateNavGlider();
 
   if (view === 'rating') renderRating();
   if (view === 'account') renderAccountPanel();
   window.scrollTo(0, 0);
+}
+
+function updateNavGlider(index = VIEWS.indexOf(activeView)) {
+  const safeIndex = Math.max(0, Math.min(VIEWS.length - 1, index));
+  document.documentElement.style.setProperty('--nav-index', safeIndex);
+}
+
+function updateKeyboardOffset() {
+  const viewport = window.visualViewport;
+  if (!viewport) {
+    document.documentElement.style.setProperty('--keyboard-offset', '0px');
+    return;
+  }
+  const keyboardOffset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+  document.documentElement.style.setProperty('--keyboard-offset', `${keyboardOffset}px`);
 }
 
 function renderRating() {
@@ -858,6 +865,48 @@ document.querySelectorAll('.nav-tab').forEach((tab) => {
   tab.addEventListener('click', goToTab);
   tab.addEventListener('pointerup', goToTab);
 });
+
+if (els.bottomNav) {
+  let isDraggingNav = false;
+
+  const pickNavView = (clientX, commit = false) => {
+    const rect = els.bottomNav.getBoundingClientRect();
+    const progress = Math.max(0, Math.min(0.999, (clientX - rect.left) / Math.max(1, rect.width)));
+    const index = Math.floor(progress * VIEWS.length);
+    updateNavGlider(index);
+    if (commit) showView(VIEWS[index]);
+  };
+
+  els.bottomNav.addEventListener('pointerdown', (event) => {
+    isDraggingNav = true;
+    els.bottomNav.classList.add('is-dragging');
+    els.bottomNav.setPointerCapture?.(event.pointerId);
+    pickNavView(event.clientX);
+  });
+
+  els.bottomNav.addEventListener('pointermove', (event) => {
+    if (!isDraggingNav) return;
+    event.preventDefault();
+    pickNavView(event.clientX);
+  });
+
+  const finishNavDrag = (event) => {
+    if (!isDraggingNav) return;
+    isDraggingNav = false;
+    els.bottomNav.classList.remove('is-dragging');
+    els.bottomNav.releasePointerCapture?.(event.pointerId);
+    pickNavView(event.clientX, true);
+  };
+
+  els.bottomNav.addEventListener('pointerup', finishNavDrag);
+  els.bottomNav.addEventListener('pointercancel', finishNavDrag);
+}
+
+window.visualViewport?.addEventListener('resize', updateKeyboardOffset);
+window.visualViewport?.addEventListener('scroll', updateKeyboardOffset);
+window.addEventListener('resize', updateKeyboardOffset);
+updateKeyboardOffset();
+updateNavGlider();
 
 document.querySelectorAll('.subtab').forEach((tab) => {
   tab.addEventListener('click', () => {
