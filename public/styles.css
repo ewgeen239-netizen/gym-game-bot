@@ -81,6 +81,10 @@ body.is-choosing .app-shell {
   display: block;
 }
 
+.view:not(.is-active) {
+  pointer-events: none;
+}
+
 .page-head,
 .level-card,
 .action-card,
@@ -675,6 +679,9 @@ select:focus {
   background: transparent;
   font-size: 0.72rem;
   font-weight: 800;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .subtab.is-active,
@@ -696,6 +703,8 @@ select:focus {
   background: rgba(11, 16, 29, 0.9);
   backdrop-filter: blur(18px);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 
 .bottom-nav[hidden] {

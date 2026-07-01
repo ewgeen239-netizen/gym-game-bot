@@ -26,17 +26,17 @@ const EQUIPMENT_ASSETS = [
     key: 'shield',
     url: '/assets/equipment/vanguard_shield.glb',
     level: 3,
-    height: 1.05,
-    position: [-0.78, 0.06, 0.2],
-    rotation: [0, Math.PI / 2.7, 0.08],
+    height: 0.88,
+    position: [-1.12, 0.46, 0.34],
+    rotation: [0.04, Math.PI / 2.05, 0.12],
     fallback: ['shield', 'shieldCore', 'crest']
   },
   {
     key: 'shoulders',
     url: '/assets/equipment/storm_shoulders.glb',
     level: 5,
-    height: 0.72,
-    position: [0, 0.58, 0.03],
+    height: 0.66,
+    position: [0, 0.92, 0.06],
     rotation: [0, 0, 0],
     fallback: ['shoulder', 'core']
   },
@@ -44,8 +44,8 @@ const EQUIPMENT_ASSETS = [
     key: 'wings',
     url: '/assets/equipment/aura_wings.glb',
     level: 7,
-    height: 1.42,
-    position: [0, 0.18, -0.28],
+    height: 1.22,
+    position: [0, 0.72, -0.42],
     rotation: [0, Math.PI / 2, 0],
     fallback: ['halo', 'ring']
   },
@@ -53,17 +53,17 @@ const EQUIPMENT_ASSETS = [
     key: 'blade',
     url: '/assets/equipment/tempest_blade.glb',
     level: 9,
-    height: 1.22,
-    position: [0.9, -0.08, 0.2],
-    rotation: [0.05, 0.18, -0.43],
+    height: 1.08,
+    position: [1.12, 0.32, 0.28],
+    rotation: [0.05, 0.24, -0.52],
     fallback: ['blade', 'bladeGuard']
   },
   {
     key: 'armor',
     url: '/assets/equipment/legend_armor.glb',
     level: 12,
-    height: 1.28,
-    position: [0, -0.08, 0.05],
+    height: 1.12,
+    position: [0, 0.42, 0.08],
     rotation: [0, 0, 0],
     fallback: ['core', 'belt']
   }
@@ -401,6 +401,9 @@ function loadEquipmentAsset(config) {
     wrapper.scale.setScalar(fitScale);
     wrapper.position.set(...config.position);
     wrapper.rotation.set(...config.rotation);
+    wrapper.userData.basePosition = wrapper.position.clone();
+    wrapper.userData.baseRotation = wrapper.rotation.clone();
+    wrapper.userData.floatSeed = EQUIPMENT_ASSETS.findIndex((item) => item.key === config.key) * 0.9;
     wrapper.visible = false;
 
     object.traverse((item) => {
@@ -541,8 +544,25 @@ function animateThreeScene() {
   threeScene.parts.ring.rotation.z = tick * 0.7;
   threeScene.parts.halo.rotation.z = tick * 0.95;
   threeScene.parts.blade.rotation.y = Math.sin(tick * 1.5) * 0.22;
+  animateEquipment(tick);
   threeScene.renderer.render(threeScene.scene, threeScene.camera);
   requestAnimationFrame(animateThreeScene);
+}
+
+function animateEquipment(tick) {
+  if (!threeScene?.equipment) return;
+  Object.values(threeScene.equipment).forEach((model) => {
+    if (!model.visible || !model.userData.basePosition) return;
+    const seed = model.userData.floatSeed || 0;
+    const float = Math.sin(tick * 1.2 + seed) * 0.045;
+    const orbit = Math.sin(tick * 0.8 + seed) * 0.035;
+    model.position.set(
+      model.userData.basePosition.x + orbit,
+      model.userData.basePosition.y + float,
+      model.userData.basePosition.z
+    );
+    model.rotation.y = model.userData.baseRotation.y + Math.sin(tick * 0.65 + seed) * 0.08;
+  });
 }
 
 async function updateThreeCharacter(hero) {
@@ -619,6 +639,7 @@ function getEquipmentHeight(model) {
 }
 
 function showView(view) {
+  if (!['hero', 'training', 'rating', 'account'].includes(view)) return;
   activeView = view;
   els.heroView.classList.toggle('is-active', view === 'hero');
   els.trainingView.classList.toggle('is-active', view === 'training');
@@ -631,6 +652,7 @@ function showView(view) {
 
   if (view === 'rating') renderRating();
   if (view === 'account') renderAccountPanel();
+  window.scrollTo(0, 0);
 }
 
 function renderRating() {
@@ -828,7 +850,13 @@ els.setForm.addEventListener('submit', async (event) => {
 });
 
 document.querySelectorAll('.nav-tab').forEach((tab) => {
-  tab.addEventListener('click', () => showView(tab.dataset.view));
+  const goToTab = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    showView(tab.dataset.view);
+  };
+  tab.addEventListener('click', goToTab);
+  tab.addEventListener('pointerup', goToTab);
 });
 
 document.querySelectorAll('.subtab').forEach((tab) => {
