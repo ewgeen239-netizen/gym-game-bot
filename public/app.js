@@ -21,6 +21,9 @@ let sheetDragCurrentY = 0;
 let isDraggingSheet = false;
 const initData = tg?.initData || '';
 const devUser = new URLSearchParams(window.location.search).get('devUser');
+const HERO_MODEL_SCALE = 2.18;
+const HERO_MODEL_Y = -1.36;
+const HERO_MODEL_FULL_Y = -1.12;
 
 const EQUIPMENT_ASSETS = [
   {
@@ -386,8 +389,8 @@ async function ensureThreeScene() {
     };
     loader.load('/assets/models/base_basic_shaded.glb', (gltf) => {
       modelRoot.add(gltf.scene);
-      modelRoot.scale.setScalar(1.95);
-      modelRoot.position.set(0, -1.56, 0);
+      modelRoot.scale.setScalar(HERO_MODEL_SCALE);
+      modelRoot.position.set(0, HERO_MODEL_Y, 0);
       modelRoot.rotation.y = 0;
       gltf.scene.traverse((item) => {
         if (item.isMesh) {
@@ -610,17 +613,12 @@ async function updateThreeCharacter(hero) {
   scene.shieldMaterial.color.setHex(colors[1]);
   scene.aura.color.setHex(colors[2]);
   const level = Math.min(12, hero.visual.level || 1);
-  const muscle = hero.visual.muscleLevel;
   const armor = hero.visual.armorLevel;
   const aura = hero.visual.auraLevel;
   const revealScale = heroFullView ? 0.9 : 1;
-  scene.group.scale.set(
-    (0.9 + muscle * 0.038) * revealScale,
-    (0.9 + level * 0.02) * revealScale,
-    (0.9 + muscle * 0.028) * revealScale
-  );
-  scene.modelRoot.scale.setScalar((1.92 + level * 0.035 + muscle * 0.045) * revealScale);
-  scene.modelRoot.position.y = (heroFullView ? -1.34 : -1.58) + level * 0.018;
+  scene.group.scale.setScalar(revealScale);
+  scene.modelRoot.scale.setScalar(HERO_MODEL_SCALE * revealScale);
+  scene.modelRoot.position.y = heroFullView ? HERO_MODEL_FULL_Y : HERO_MODEL_Y;
   Object.values(scene.parts).forEach((part) => {
     part.visible = false;
   });
