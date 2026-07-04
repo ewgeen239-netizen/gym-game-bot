@@ -112,8 +112,29 @@ class JsonStorage(Storage):
 
 
 def build_storage() -> Storage:
-    """Pick the backend based on configuration."""
+    """Pick the backend based on configuration.
+
+    If Google Sheets is configured but fails to initialise, log a clear reason
+    and fall back to local JSON so the bot still starts (instead of crashing on
+    a raw traceback).
+    """
+    import logging
+
+    log = logging.getLogger("gymgame.storage")
     if config.USE_SHEETS:
-        from .sheets import SheetsStorage  # imported lazily so JSON mode needs no gspread
-        return SheetsStorage(config.GOOGLE_SHEETS_CREDS, config.GOOGLE_SHEET_ID)
+        try:
+            from .sheets import SheetsStorage  # lazy import so JSON mode needs no gspread
+            return SheetsStorage(config.GOOGLE_SHEETS_CREDS, config.GOOGLE_SHEET_ID)
+        except Exception as exc:  # noqa: BLE001 — surface a readable message, then fall back
+            log.error("=" * 60)
+            log.error("Google Sheets init FAILED — falling back to local JSON.")
+            log.error("Reason: %s: %s", type(exc).__name__, exc)
+            log.error("Common fixes:")
+            log.error("  • GOOGLE_SHEETS_CREDS must be the FULL service-account JSON")
+            log.error("    (starts with {\"type\": \"service_account\", ...}).")
+            log.error("  • Enable BOTH Google Sheets API and Google Drive API.")
+            log.error("  • Share the sheet with the service account client_email (Editor).")
+            log.error("  • GOOGLE_SHEET_ID = the id between /d/ and /edit in the sheet URL.")
+            log.error("See GOOGLE_SHEETS_SETUP.md")
+            log.error("=" * 60)
     return JsonStorage(config.DATA_FILE)

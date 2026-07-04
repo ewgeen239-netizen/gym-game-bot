@@ -80,7 +80,13 @@ async def run() -> None:
         while True:
             await asyncio.sleep(3600)
 
-    bot = Bot(config.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    try:
+        bot = Bot(config.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    except Exception as exc:  # noqa: BLE001 — usually a malformed BOT_TOKEN
+        log.error("Invalid BOT_TOKEN (%s: %s). Copy it from @BotFather, format "
+                  "'123456789:AA...'. Running API only.", type(exc).__name__, exc)
+        while True:
+            await asyncio.sleep(3600)
     dp = Dispatcher()
     register_handlers(dp, bot)
 
