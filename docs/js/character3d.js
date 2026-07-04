@@ -1,26 +1,33 @@
-// GymGame 3D character — a procedural humanoid built from primitives.
-// Muscle groups scale with the player's stats and evolution tier, and the
-// figure plays exercise + level-up animations. No external model files needed.
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+// GymGame 3D character — loads the original GLB hero model and evolves it with
+// the player's tier, plus procedural neon equipment that orbits and unlocks by
+// level. Keeps the GymCharacter interface (setStats / play / celebrate) so the
+// rest of the app is unchanged.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const NEON_CYAN = 0x22d3ee;
 const NEON_MAGENTA = 0xf472b6;
+
+const HERO_URL = new URL('../assets/models/base_basic_shaded.glb', import.meta.url).href;
+const HERO_MODEL_SCALE = 1.95;
+const HERO_MODEL_Y = -1.54;
 
 export class GymCharacter {
   constructor(canvas) {
     this.canvas = canvas;
     this.clock = new THREE.Clock();
     this.anim = 'idle';
-    this.animT = 0;
     this.celebrateT = 0;
+    this.animPulse = 0;
     this.stats = { strength: 0, endurance: 0, agility: 0 };
     this.muscle = 1;
     this.level = 1;
     this.equip = {};
     this.bodyColor = new THREE.Color(NEON_CYAN);
+    this.heroReady = false;
 
     this._initScene();
-    this._buildBody();
+    this._loadHero();
     this._buildEquipment();
     this._loop = this._loop.bind(this);
     this._onResize = this._onResize.bind(this);
@@ -32,139 +39,70 @@ export class GymCharacter {
   _initScene() {
     const scene = new THREE.Scene();
     this.scene = scene;
-    this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-    this.camera.position.set(0, 1.6, 6.2);
-    this.camera.lookAt(0, 1.4, 0);
+    this.camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+    this.camera.position.set(0, 1.15, 4.9);
+    this.camera.lookAt(0, 0.55, 0);
 
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    this.renderer = renderer;
 
-    // neon rim lighting
-    scene.add(new THREE.AmbientLight(0x334155, 1.1));
-    const key = new THREE.PointLight(NEON_CYAN, 40, 40);
-    key.position.set(3, 5, 4);
+    // Neutral-ish lighting so the model's PBR materials read correctly,
+    // plus a couple of soft neon accents for the cyberpunk vibe.
+    scene.add(new THREE.HemisphereLight(0xd9f2ff, 0x07101c, 2.2));
+    const key = new THREE.DirectionalLight(0x9ad4ff, 2.6);
+    key.position.set(2.8, 4.5, 3.2);
     scene.add(key);
-    const fill = new THREE.PointLight(NEON_MAGENTA, 30, 40);
-    fill.position.set(-4, 2, 3);
-    scene.add(fill);
-    const back = new THREE.DirectionalLight(0x8b5cf6, 1.4);
-    back.position.set(0, 4, -5);
-    scene.add(back);
+    const rim = new THREE.PointLight(NEON_MAGENTA, 18, 40);
+    rim.position.set(-4, 2.5, 2.5);
+    scene.add(rim);
 
-    // glowing platform
+    // hero holder (turntable) + independent equipment root
+    this.group = new THREE.Group();
+    scene.add(this.group);
+
+    // glowing platform + grid (kept from the neon home stage)
     const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(1.5, 0.06, 16, 64),
+      new THREE.TorusGeometry(1.35, 0.05, 16, 64),
       new THREE.MeshBasicMaterial({ color: NEON_CYAN })
     );
     ring.rotation.x = Math.PI / 2;
-    ring.position.y = 0.02;
+    ring.position.y = -1.55;
     scene.add(ring);
     this.ring = ring;
 
-    const grid = new THREE.GridHelper(14, 14, NEON_MAGENTA, 0x1e293b);
-    grid.position.y = 0;
-    grid.material.opacity = 0.25;
+    const grid = new THREE.GridHelper(12, 12, NEON_MAGENTA, 0x1e293b);
+    grid.position.y = -1.55;
+    grid.material.opacity = 0.22;
     grid.material.transparent = true;
     scene.add(grid);
   }
 
-  _mat(color, emissive = 0.55) {
-    return new THREE.MeshStandardMaterial({
-      color, metalness: 0.6, roughness: 0.35,
-      emissive: new THREE.Color(color), emissiveIntensity: emissive,
-    });
-  }
-
-  _buildBody() {
-    const root = new THREE.Group();
-    this.root = root;
-    this.scene.add(root);
-
-    const skin = this.bodyColor.getHex();
-    const dark = 0x0f172a;
-
-    // torso / chest (chest group scales with strength)
-    this.chest = new THREE.Group();
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.7, 8, 16), this._mat(skin));
-    torso.position.y = 2.15;
-    this.chest.add(torso);
-    const pecs = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.45, 0.35), this._mat(skin, 0.7));
-    pecs.position.set(0, 2.35, 0.22);
-    this.chest.add(pecs);
-    // core / abs (endurance)
-    this.core = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.55, 0.32), this._mat(dark, 0.3));
-    this.core.position.set(0, 1.7, 0.18);
-    root.add(this.core);
-    root.add(this.chest);
-
-    // head + neck
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 24), this._mat(skin, 0.5));
-    head.position.y = 2.95;
-    root.add(head);
-    this.head = head;
-    const visor = new THREE.Mesh(
-      new THREE.BoxGeometry(0.42, 0.12, 0.1),
-      new THREE.MeshBasicMaterial({ color: NEON_MAGENTA })
+  _loadHero() {
+    const loader = new GLTFLoader();
+    loader.load(
+      HERO_URL,
+      (gltf) => {
+        const model = gltf.scene;
+        model.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
+        const root = new THREE.Group();
+        root.add(model);
+        root.scale.setScalar(HERO_MODEL_SCALE);
+        root.position.set(0, HERO_MODEL_Y, 0);
+        this.hero = root;
+        this.group.add(root);
+        this.heroReady = true;
+        this._applyScale();
+      },
+      undefined,
+      (err) => console.error('Hero model failed to load:', err)
     );
-    visor.position.set(0, 2.98, 0.27);
-    root.add(visor);
-
-    // shoulders + arms (strength). Pivots at the shoulder joint.
-    this.arms = { left: this._buildArm(-1), right: this._buildArm(1) };
-    root.add(this.arms.left.pivot, this.arms.right.pivot);
-
-    // hips + legs (agility). Pivots at the hip joint.
-    const hips = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.2, 6, 14), this._mat(skin, 0.4));
-    hips.position.y = 1.35;
-    root.add(hips);
-    this.legs = { left: this._buildLeg(-1), right: this._buildLeg(1) };
-    root.add(this.legs.left.pivot, this.legs.right.pivot);
-
-    this._applyScale();
   }
 
-  _buildArm(side) {
-    const pivot = new THREE.Group();
-    pivot.position.set(0.55 * side, 2.55, 0);
-    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 16), this._mat(this.bodyColor.getHex(), 0.7));
-    pivot.add(shoulder);
-    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.5, 6, 12), this._mat(this.bodyColor.getHex()));
-    upper.position.y = -0.4;
-    pivot.add(upper);
-    const forearmPivot = new THREE.Group();
-    forearmPivot.position.y = -0.7;
-    const fore = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.45, 6, 12), this._mat(this.bodyColor.getHex()));
-    fore.position.y = -0.35;
-    forearmPivot.add(fore);
-    const glove = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), this._mat(NEON_MAGENTA, 0.8));
-    glove.position.y = -0.62;
-    forearmPivot.add(glove);
-    pivot.add(forearmPivot);
-    return { pivot, forearmPivot, shoulder, upper };
-  }
-
-  _buildLeg(side) {
-    const pivot = new THREE.Group();
-    pivot.position.set(0.22 * side, 1.25, 0);
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.19, 0.55, 6, 12), this._mat(this.bodyColor.getHex()));
-    thigh.position.y = -0.4;
-    pivot.add(thigh);
-    const shinPivot = new THREE.Group();
-    shinPivot.position.y = -0.75;
-    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.5, 6, 12), this._mat(this.bodyColor.getHex()));
-    shin.position.y = -0.35;
-    shinPivot.add(shin);
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.12, 0.4), this._mat(NEON_CYAN, 0.8));
-    foot.position.set(0, -0.62, 0.08);
-    shinPivot.add(foot);
-    pivot.add(shinPivot);
-    return { pivot, shinPivot, thigh };
-  }
-
-  // --- Orbiting equipment (ported from the previous build) -----------------
-  // Unlocked gear floats and orbits around the hero on an elliptical path.
-  // Procedural neon meshes — no external .glb assets needed. `level` gates
-  // each piece so gear appears as the player ranks up.
+  // --- Orbiting equipment (procedural, unlocks by level) -------------------
   _equipmentSpecs() {
     const gem = (geo, color, emissive = 0.9) =>
       new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
@@ -173,32 +111,32 @@ export class GymCharacter {
       }));
     return [
       { key: 'gloves', level: 2,  make: () => gem(new THREE.OctahedronGeometry(0.16), NEON_MAGENTA),
-        radius: 1.25, depth: 0.5, height: 1.7, speed: 0.7,  phase: Math.PI * 0.1 },
+        radius: 1.25, depth: 0.5, height: 0.3, speed: 0.7,  phase: Math.PI * 0.1 },
       { key: 'belt',   level: 4,  make: () => gem(new THREE.TorusGeometry(0.18, 0.06, 10, 20), 0xfacc15),
-        radius: 1.1,  depth: 0.45, height: 1.35, speed: 0.55, phase: Math.PI * 0.8 },
+        radius: 1.1,  depth: 0.45, height: -0.1, speed: 0.55, phase: Math.PI * 0.8 },
       { key: 'shoes',  level: 6,  make: () => gem(new THREE.BoxGeometry(0.28, 0.12, 0.4), NEON_CYAN),
-        radius: 1.35, depth: 0.55, height: 0.55, speed: 0.6,  phase: Math.PI * 1.4 },
+        radius: 1.35, depth: 0.55, height: -0.9, speed: 0.6,  phase: Math.PI * 1.4 },
       { key: 'tracker',level: 8,  make: () => gem(new THREE.TorusGeometry(0.12, 0.045, 8, 16), NEON_CYAN),
-        radius: 1.0,  depth: 0.4,  height: 2.0, speed: 0.75, phase: Math.PI * 0.45 },
+        radius: 1.0,  depth: 0.4,  height: 0.6, speed: 0.75, phase: Math.PI * 0.45 },
       { key: 'aura',   level: 10, make: () => {
           const m = gem(new THREE.IcosahedronGeometry(0.22, 0), NEON_CYAN, 0.5);
           m.material.wireframe = true; return m;
-        }, radius: 1.5, depth: 0.65, height: 2.15, speed: 0.4, phase: Math.PI * 1.05 },
+        }, radius: 1.5, depth: 0.65, height: 0.75, speed: 0.4, phase: Math.PI * 1.05 },
       { key: 'hood',   level: 12, make: () => gem(new THREE.ConeGeometry(0.2, 0.34, 6), 0xa855f7),
-        radius: 1.2,  depth: 0.5,  height: 2.3, speed: 0.5,  phase: Math.PI * 0.25 },
+        radius: 1.2,  depth: 0.5,  height: 0.9, speed: 0.5,  phase: Math.PI * 0.25 },
       { key: 'crown',  level: 35, make: () => gem(new THREE.ConeGeometry(0.22, 0.3, 5), 0xfacc15),
-        radius: 0.9,  depth: 0.35, height: 3.35, speed: 0.9, phase: 0 },
+        radius: 0.9,  depth: 0.35, height: 1.9, speed: 0.9, phase: 0 },
       { key: 'wings',  level: 50, make: () => {
           const g = new THREE.Group();
           [-1, 1].forEach((s) => { const w = gem(new THREE.ConeGeometry(0.14, 0.7, 4), NEON_MAGENTA); w.position.x = s * 0.25; w.rotation.z = s * 0.6; g.add(w); });
           return g;
-        }, radius: 1.6, depth: 0.7, height: 2.0, speed: 0.35, phase: Math.PI },
+        }, radius: 1.6, depth: 0.7, height: 0.5, speed: 0.35, phase: Math.PI },
     ];
   }
 
   _buildEquipment() {
     this.equipRoot = new THREE.Group();
-    this.scene.add(this.equipRoot); // independent of body turntable
+    this.scene.add(this.equipRoot);
     this._equipmentSpecs().forEach((spec, i) => {
       const mesh = spec.make();
       mesh.visible = false;
@@ -225,110 +163,62 @@ export class GymCharacter {
     });
   }
 
+  // --- Public interface -----------------------------------------------------
   setStats({ strength = 0, endurance = 0, agility = 0, tier, level } = {}) {
     this.stats = { strength, endurance, agility };
     this.muscle = tier ? tier.muscle : 1;
     if (typeof level === 'number') this.level = level;
-    if (tier && tier.color) this.bodyColor = new THREE.Color(tier.color);
-    this._recolor();
+    if (tier && tier.color) {
+      this.bodyColor = new THREE.Color(tier.color);
+      if (this.ring) this.ring.material.color.set(tier.color);
+    }
     this._applyScale();
     this._showEquipmentForLevel(this.level);
   }
 
-  _recolor() {
-    const hex = this.bodyColor.getHex();
-    const paint = (m) => { if (m && m.material && m.material.color) { m.material.color.set(hex); m.material.emissive.set(hex); } };
-    [this.arms, this.legs].forEach((pair) => {
-      Object.values(pair || {}).forEach((limb) => limb.pivot.traverse(paint));
-    });
-    if (this.chest) this.chest.traverse(paint);
-    if (this.head) paint(this.head);
-    if (this.ring) this.ring.material.color.set(hex);
-  }
-
-  // Scale muscle groups by tier + individual stats (soft, capped growth).
+  // Evolution: the hero grows with tier. Strength adds a little extra bulk.
   _applyScale() {
-    const s = 1 + Math.min(this.stats.strength / 900, 0.9);
-    const e = 1 + Math.min(this.stats.endurance / 900, 0.6);
-    const a = 1 + Math.min(this.stats.agility / 900, 0.6);
-    const m = this.muscle;
-
-    if (this.chest) this.chest.scale.set(m * s, m, m * s);
-    if (this.core) this.core.scale.set(1 * e, 1 + (e - 1) * 0.5, 1);
-    Object.values(this.arms).forEach((arm) => arm.pivot.scale.setScalar(m * s));
-    Object.values(this.legs).forEach((leg) => leg.pivot.scale.setScalar(m * a));
+    if (!this.heroReady || !this.hero) return;
+    const bulk = 1 + Math.min(this.stats.strength / 1200, 0.35);
+    const s = HERO_MODEL_SCALE * this.muscle * bulk;
+    this._scaleXZ = s * 1.02;
+    this._scaleY = s;
+    this.hero.scale.set(this._scaleXZ, this._scaleY, this._scaleXZ);
   }
 
   play(name) {
     this.anim = name;
-    this.animT = 0;
+    this.animPulse = 1;
   }
 
   celebrate() {
     this.celebrateT = 2.2;
   }
 
-  _animate(t) {
-    const { arms, legs, root, chest } = this;
-    const rest = () => {
-      arms.left.pivot.rotation.set(0, 0, 0.12);
-      arms.right.pivot.rotation.set(0, 0, -0.12);
-      arms.left.forearmPivot.rotation.x = 0;
-      arms.right.forearmPivot.rotation.x = 0;
-      legs.left.pivot.rotation.set(0, 0, 0);
-      legs.right.pivot.rotation.set(0, 0, 0);
-      root.position.y = 0;
-    };
-
-    if (this.anim === 'curl') {
-      rest();
-      const c = (Math.sin(t * 5) * 0.5 + 0.5) * 2.4;
-      arms.left.forearmPivot.rotation.x = -c;
-      arms.right.forearmPivot.rotation.x = -c;
-    } else if (this.anim === 'squat') {
-      rest();
-      const d = (Math.sin(t * 4) * 0.5 + 0.5);
-      root.position.y = -d * 0.55;
-      legs.left.pivot.rotation.x = d * 0.9;
-      legs.right.pivot.rotation.x = d * 0.9;
-      legs.left.shinPivot.rotation.x = -d * 1.1;
-      legs.right.shinPivot.rotation.x = -d * 1.1;
-      arms.left.pivot.rotation.x = -d * 1.4;
-      arms.right.pivot.rotation.x = -d * 1.4;
-    } else if (this.anim === 'press') {
-      rest();
-      const p = (Math.sin(t * 5) * 0.5 + 0.5);
-      arms.left.pivot.rotation.z = 0.12 + p * 2.6;
-      arms.right.pivot.rotation.z = -0.12 - p * 2.6;
-    } else {
-      // idle: subtle breathing + arm sway
-      rest();
-      const b = Math.sin(t * 1.6) * 0.04;
-      root.position.y = b;
-      if (chest) chest.scale.y = (this.muscle) * (1 + b * 0.3);
-      arms.left.pivot.rotation.z = 0.12 + Math.sin(t * 1.6) * 0.05;
-      arms.right.pivot.rotation.z = -0.12 - Math.sin(t * 1.6) * 0.05;
-    }
-  }
-
   _loop() {
     const dt = this.clock.getDelta();
     const t = this.clock.elapsedTime;
-    this._animate(t);
+
+    // idle turntable + gentle float
+    this.group.rotation.y += dt * 0.4;
+    this.group.position.y = Math.sin(t * 1.4) * 0.05;
+    this.ring.rotation.z += dt * 0.6;
     this._animateEquipment(t);
 
-    // slow turntable
-    this.root.rotation.y += dt * 0.35;
-    this.ring.rotation.z += dt * 0.6;
+    // exercise "pulse": a quick squash/bounce on the hero (model is static)
+    if (this.animPulse > 0 && this.hero && this._scaleY) {
+      this.animPulse = Math.max(0, this.animPulse - dt * 1.6);
+      const p = Math.sin((1 - this.animPulse) * Math.PI) * 0.06;
+      this.hero.scale.y = this._scaleY * (1 + p);
+      if (this.animPulse === 0) this.hero.scale.y = this._scaleY; // restore
+    }
 
     if (this.celebrateT > 0) {
       this.celebrateT -= dt;
-      this.root.rotation.y += dt * 6;
+      this.group.rotation.y += dt * 6;
       const flash = Math.abs(Math.sin(this.celebrateT * 12));
-      this.root.scale.setScalar(1 + flash * 0.08);
-      this.ring.scale.setScalar(1 + flash * 0.4);
+      this.ring.scale.setScalar(1 + flash * 0.35);
     } else {
-      this.root.scale.setScalar(1);
       this.ring.scale.setScalar(1);
     }
 
