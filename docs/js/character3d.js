@@ -4,13 +4,18 @@
 // rest of the app is unchanged.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
 const NEON_CYAN = 0x22d3ee;
 const NEON_MAGENTA = 0xf472b6;
 
 const HERO_URL = new URL('../assets/models/base_basic_shaded.glb', import.meta.url).href;
-const HERO_MODEL_SCALE = 1.95;
-const HERO_MODEL_Y = -1.54;
+const DRACO_PATH = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/';
+
+// Display framing (world units). The model is auto-fit to this height and its
+// feet are anchored on the ring so the whole hero stays visible.
+const DISPLAY_HEIGHT = 2.55;
+const FEET_Y = -1.5;
 
 export class GymCharacter {
   constructor(canvas) {
@@ -39,9 +44,9 @@ export class GymCharacter {
   _initScene() {
     const scene = new THREE.Scene();
     this.scene = scene;
-    this.camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-    this.camera.position.set(0, 1.15, 4.9);
-    this.camera.lookAt(0, 0.55, 0);
+    this.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    this.camera.position.set(0, 0.35, 5.6);
+    this.camera.lookAt(0, 0.15, 0);
 
     const renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -70,12 +75,12 @@ export class GymCharacter {
       new THREE.MeshBasicMaterial({ color: NEON_CYAN })
     );
     ring.rotation.x = Math.PI / 2;
-    ring.position.y = -1.55;
+    ring.position.y = FEET_Y;
     scene.add(ring);
     this.ring = ring;
 
     const grid = new THREE.GridHelper(12, 12, NEON_MAGENTA, 0x1e293b);
-    grid.position.y = -1.55;
+    grid.position.y = FEET_Y;
     grid.material.opacity = 0.22;
     grid.material.transparent = true;
     scene.add(grid);
@@ -83,15 +88,28 @@ export class GymCharacter {
 
   _loadHero() {
     const loader = new GLTFLoader();
+    const draco = new DRACOLoader();
+    draco.setDecoderPath(DRACO_PATH);
+    loader.setDRACOLoader(draco);
     loader.load(
       HERO_URL,
       (gltf) => {
         const model = gltf.scene;
         model.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
+
+        // Auto-fit: measure the model, recentre it on its own origin so its
+        // feet sit at the bottom, then scale to a known display height.
+        const box = new THREE.Box3().setFromObject(model);
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(center);
+        // shift so X/Z are centred and the feet (box.min.y) sit at y = 0
+        model.position.set(-center.x, -box.min.y, -center.z);
+
         const root = new THREE.Group();
         root.add(model);
-        root.scale.setScalar(HERO_MODEL_SCALE);
-        root.position.set(0, HERO_MODEL_Y, 0);
+        this._fitScale = DISPLAY_HEIGHT / Math.max(0.001, size.y); // base scale
         this.hero = root;
         this.group.add(root);
         this.heroReady = true;
@@ -123,7 +141,7 @@ export class GymCharacter {
           m.material.wireframe = true; return m;
         }, radius: 1.5, depth: 0.65, height: 0.75, speed: 0.4, phase: Math.PI * 1.05 },
       { key: 'hood',   level: 12, make: () => gem(new THREE.ConeGeometry(0.2, 0.34, 6), 0xa855f7),
-        radius: 1.2,  depth: 0.5,  height: 0.9, speed: 0.5,  phase: Math.PI * 0.25 },
+        radius: 1.2,  depth: 0.5,  height: 1.35, speed: 0.5,  phase: Math.PI * 0.25 },
       { key: 'crown',  level: 35, make: () => gem(new THREE.ConeGeometry(0.22, 0.3, 5), 0xfacc15),
         radius: 0.9,  depth: 0.35, height: 1.9, speed: 0.9, phase: 0 },
       { key: 'wings',  level: 50, make: () => {
@@ -176,14 +194,16 @@ export class GymCharacter {
     this._showEquipmentForLevel(this.level);
   }
 
-  // Evolution: the hero grows with tier. Strength adds a little extra bulk.
+  // Evolution: the hero grows with tier + strength, but capped so it stays fully
+  // framed, and anchored at the feet so it grows upward from the ring.
   _applyScale() {
-    if (!this.heroReady || !this.hero) return;
-    const bulk = 1 + Math.min(this.stats.strength / 1200, 0.35);
-    const s = HERO_MODEL_SCALE * this.muscle * bulk;
-    this._scaleXZ = s * 1.02;
+    if (!this.heroReady || !this.hero || !this._fitScale) return;
+    const evo = 1 + Math.min((this.muscle - 1) * 0.22 + this.stats.strength / 2500, 0.32);
+    const s = this._fitScale * evo;
+    this._scaleXZ = s * 1.03;
     this._scaleY = s;
     this.hero.scale.set(this._scaleXZ, this._scaleY, this._scaleXZ);
+    this.hero.position.y = FEET_Y; // feet stay on the ring at any scale
   }
 
   play(name) {
