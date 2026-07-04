@@ -139,7 +139,7 @@ export class GymCharacter {
     renderer.setClearColor(0x000000, 0);
     this.composer = new EffectComposer(renderer);
     this.composer.addPass(new RenderPass(scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.6, 0.5, 0.82);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.38, 0.45, 0.88);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
   }
@@ -343,15 +343,17 @@ export class GymCharacter {
   _frame() {
     const fov = (this.camera.fov * Math.PI) / 180;
     const aspect = this.camera.aspect || 1;
-    const margin = 1.28;
+    const margin = 1.5;                       // more padding so nothing clips
     const h = this._fitH * margin;
     const w = this._fitW * margin;
     const distH = (h / 2) / Math.tan(fov / 2);
     const distW = (w / 2) / (Math.tan(fov / 2) * aspect);
     const dist = Math.max(distH, distW, 3);
     const centerY = FEET_Y + this._fitH / 2;
-    this.camera.position.set(0, centerY, dist);
-    this.camera.lookAt(0, centerY, 0);
+    // aim a bit above centre so the hero sits lower in the frame with headroom
+    const aim = centerY + this._fitH * 0.12;
+    this.camera.position.set(0, aim, dist);
+    this.camera.lookAt(0, aim, 0);
     this.camera.updateProjectionMatrix();
   }
 
