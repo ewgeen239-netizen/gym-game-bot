@@ -21,7 +21,15 @@ const state = {
 // Boot
 // ---------------------------------------------------------------------------
 async function boot() {
-  try { tg?.ready(); tg?.expand(); tg?.setHeaderColor?.('#060912'); } catch (_) {}
+  try {
+    tg?.ready();
+    tg?.expand();
+    tg?.setHeaderColor?.('#060912');
+    // Keep the app open when swiping down (Telegram Bot API 7.7+); guarded for
+    // older clients that don't have the method.
+    tg?.disableVerticalSwipes?.();
+    tg?.enableClosingConfirmation?.();
+  } catch (_) {}
 
   try {
     const { profile, meta } = await api.profile();
