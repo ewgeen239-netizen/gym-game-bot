@@ -5,6 +5,11 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const NEON_CYAN = 0x22d3ee;
 const NEON_MAGENTA = 0xf472b6;
@@ -69,18 +74,46 @@ export class GymCharacter {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = 1.1;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer = renderer;
 
-    // Neutral-ish lighting so the model's PBR materials read correctly,
-    // plus a couple of soft neon accents for the cyberpunk vibe.
-    scene.add(new THREE.HemisphereLight(0xd9f2ff, 0x07101c, 2.2));
-    const key = new THREE.DirectionalLight(0x9ad4ff, 2.6);
-    key.position.set(2.8, 4.5, 3.2);
+    // Image-based lighting: reflections/detail on the PBR materials.
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environmentIntensity = 0.55;
+
+    // Studio-style key/fill/rim lighting for depth and detail.
+    scene.add(new THREE.HemisphereLight(0xdff0ff, 0x0a1420, 1.1));
+    const key = new THREE.DirectionalLight(0xffffff, 2.4);
+    key.position.set(3, 5.5, 4);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.camera.near = 1; key.shadow.camera.far = 20;
+    key.shadow.camera.left = -3; key.shadow.camera.right = 3;
+    key.shadow.camera.top = 4; key.shadow.camera.bottom = -3;
+    key.shadow.bias = -0.0006; key.shadow.radius = 4;
     scene.add(key);
-    const rim = new THREE.PointLight(NEON_MAGENTA, 18, 40);
-    rim.position.set(-4, 2.5, 2.5);
-    scene.add(rim);
+    const fillCyan = new THREE.PointLight(NEON_CYAN, 22, 45);
+    fillCyan.position.set(3.5, 1.5, 3);
+    scene.add(fillCyan);
+    const rimMag = new THREE.PointLight(NEON_MAGENTA, 26, 45);
+    rimMag.position.set(-4, 3, -1.5);
+    scene.add(rimMag);
+    const backViolet = new THREE.DirectionalLight(0x8b5cf6, 1.2);
+    backViolet.position.set(0, 3, -5);
+    scene.add(backViolet);
+
+    // soft contact shadow catcher on the ring plane
+    const shadowPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(6, 6),
+      new THREE.ShadowMaterial({ opacity: 0.35 })
+    );
+    shadowPlane.rotation.x = -Math.PI / 2;
+    shadowPlane.position.y = FEET_Y + 0.01;
+    shadowPlane.receiveShadow = true;
+    scene.add(shadowPlane);
 
     // hero holder (turntable) + independent equipment root
     this.group = new THREE.Group();
@@ -101,6 +134,14 @@ export class GymCharacter {
     grid.material.opacity = 0.22;
     grid.material.transparent = true;
     scene.add(grid);
+
+    // Post-processing: neon bloom (only bright emissive/neon elements glow).
+    renderer.setClearColor(0x000000, 0);
+    this.composer = new EffectComposer(renderer);
+    this.composer.addPass(new RenderPass(scene, this.camera));
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.6, 0.5, 0.82);
+    this.composer.addPass(this.bloom);
+    this.composer.addPass(new OutputPass());
   }
 
   // Load (or swap to) a model type: 'slime' (level 0) or 'human' (level 1+).
@@ -113,7 +154,13 @@ export class GymCharacter {
       (gltf) => {
         if (token !== this._loadToken) return; // a newer swap superseded this one
         const model = gltf.scene;
-        model.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
+        model.traverse((o) => {
+          if (o.isMesh) {
+            o.frustumCulled = false;
+            o.castShadow = true;
+            if (o.material) o.material.envMapIntensity = 0.7;
+          }
+        });
 
         // Auto-fit: measure, recentre on origin so feet sit at the bottom,
         // then scale to a known display height.
@@ -286,7 +333,7 @@ export class GymCharacter {
     }
     this.group.rotation.y = this.yaw + sway;
 
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render();
     requestAnimationFrame(this._loop);
   }
 
@@ -313,6 +360,7 @@ export class GymCharacter {
     const h = this.canvas.clientHeight || this.canvas.parentElement.clientHeight;
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
+    this.composer?.setSize(w, h);
     this.camera.aspect = w / h;
     this._frame();
   }
