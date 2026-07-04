@@ -154,6 +154,11 @@ def apply_workout(storage: Storage, user: dict, exercise_id: str,
     weight = min(MAX_WEIGHT, max(0.0, float(weight or 0)))
     stat = ex["stat"]
 
+    # At level 0 (slime) only XP accrues — stats and achievements stay frozen
+    # until the player evolves into a human at level 1.
+    before_level = user.get("level", 0)
+    counts = before_level >= 1
+
     _roll_quests(user)
 
     # personal best on this exercise (for progression bonus)
@@ -180,24 +185,26 @@ def apply_workout(storage: Storage, user: dict, exercise_id: str,
 
     total_xp_gain = xp + visit_xp + streak_xp
 
-    # stats
-    gain = STAT_GAIN[stat](sets, reps, weight) * sets
-    user[stat] = user.get(stat, 0) + gain
-    user["total_sets"] = user.get("total_sets", 0) + sets
+    # stats — only accrue once human (level >= 1)
+    gain = STAT_GAIN[stat](sets, reps, weight) * sets if counts else 0
+    if counts:
+        user[stat] = user.get(stat, 0) + gain
+        user["total_sets"] = user.get("total_sets", 0) + sets
 
-    # quests progress
+    # quests progress — also frozen at level 0
     q = user["quests"]
-    q["sets"] += sets
-    q[stat] += 1
-    q["volume"] += int(weight * reps * sets)
-    quest_reward = _settle_quests(user)
+    quest_reward = 0
+    if counts:
+        q["sets"] += sets
+        q[stat] += 1
+        q["volume"] += int(weight * reps * sets)
+        quest_reward = _settle_quests(user)
 
-    before_level = user["level"]
     leveled = _grant_xp(user, total_xp_gain + quest_reward)
     evolved = before_level < 1 and user["level"] >= 1  # slime -> human
 
-    # achievements
-    new_ach = game.check_achievements(user)
+    # achievements — only unlock once human
+    new_ach = game.check_achievements(user) if counts else []
     if new_ach:
         user["achievements"] = list(user.get("achievements", [])) + new_ach
 
