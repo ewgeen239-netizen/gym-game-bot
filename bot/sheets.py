@@ -11,6 +11,8 @@ the sheet stays human-readable while preserving full structure.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import threading
 from typing import Optional
@@ -75,9 +77,40 @@ def _coerce_numbers(row: dict) -> dict:
     return row
 
 
+def _parse_creds(creds_json: str) -> dict:
+    """Accept the service-account credentials as raw JSON *or* base64-encoded
+    JSON. base64 is recommended on hosts like Railway because it has no quotes
+    or newlines to mangle. Gives a clear error if the value is malformed."""
+    raw = (creds_json or "").strip()
+    # strip a single layer of accidental wrapping quotes
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ("'", '"'):
+        raw = raw[1:-1].strip()
+
+    # try raw JSON first
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+
+    # try base64 -> JSON
+    try:
+        decoded = base64.b64decode(raw, validate=True).decode("utf-8")
+        return json.loads(decoded)
+    except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError):
+        pass
+
+    head = raw[:24].replace("\n", " ")
+    raise ValueError(
+        "GOOGLE_SHEETS_CREDS is not valid JSON or base64. It must be the ENTIRE "
+        "service-account file, from the opening '{' to the closing '}' "
+        f"(got start: {head!r}...). Tip: base64-encode the file to avoid paste "
+        "issues — `base64 -i key.json` (macOS) / `base64 -w0 key.json` (Linux)."
+    )
+
+
 class SheetsStorage(Storage):
     def __init__(self, creds_json: str, sheet_id: str):
-        info = json.loads(creds_json)
+        info = _parse_creds(creds_json)
         creds = Credentials.from_service_account_info(info, scopes=SCOPES)
         self._gc = gspread.authorize(creds)
         self._sh = self._gc.open_by_key(sheet_id)
