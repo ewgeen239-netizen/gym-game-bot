@@ -51,6 +51,18 @@ async def _auth(request: web.Request) -> tuple[dict, dict]:
 def routes(storage: Storage) -> web.RouteTableDef:
     r = web.RouteTableDef()
 
+    @r.get("/")
+    async def root(_):
+        # The Mini App itself lives on GitHub Pages; this backend only serves the
+        # JSON API. A friendly root avoids a bare 404 when the URL is opened.
+        return web.json_response({
+            "service": "GymGame Club API",
+            "status": "ok",
+            "storage": "sheets" if config.USE_SHEETS else "json",
+            "frontend": config.WEBAPP_URL,
+            "endpoints": ["/api/health", "/api/meta", "/api/profile", "/api/workout"],
+        })
+
     @r.get("/api/health")
     async def health(_):
         return web.json_response({"ok": True, "storage": "sheets" if config.USE_SHEETS else "json"})
