@@ -1,11 +1,34 @@
 """aiohttp HTTP API consumed by the Telegram Mini App frontend."""
 from __future__ import annotations
 
+import logging
+
+import aiohttp
 from aiohttp import web
 
 from . import config, game, service
 from .auth import AuthError, validate_init_data
 from .storage import Storage
+
+log = logging.getLogger("gymgame.api")
+
+
+async def notify_referrer(referrer_id, friend_name: str) -> None:
+    """DM the inviter in Telegram that their friend joined (fire-and-forget)."""
+    if not config.BOT_TOKEN:
+        return
+    text = (f"🔥 <b>{friend_name}</b> присоединился по твоей ссылке!\n"
+            f"Вы теперь друзья — вызови его на недельную дуэль в приложении ⚔️")
+    kb = {"inline_keyboard": [[{"text": "🎮 Открыть GymGame",
+                               "web_app": {"url": config.WEBAPP_URL}}]]}
+    url = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": referrer_id, "text": text, "parse_mode": "HTML",
+               "reply_markup": kb}
+    try:
+        async with aiohttp.ClientSession() as s:
+            await s.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=8))
+    except Exception as exc:  # noqa: BLE001 — non-fatal
+        log.warning("notify_referrer failed: %s", exc)
 
 
 def _cors_headers(origin: str | None) -> dict:
@@ -80,8 +103,11 @@ def routes(storage: Storage) -> web.RouteTableDef:
     async def profile(request):
         auth, _ = await _auth(request)
         ref = auth.get("start_param") or ""
-        user = service.get_or_create_user(storage, auth["user"], referrer_id=ref)
+        user, new_ref = service.get_or_create_user_ex(storage, auth["user"], referrer_id=ref)
         storage.save_user(user)
+        # notify the inviter in Telegram that a friend joined
+        if new_ref:
+            await notify_referrer(new_ref["user_id"], user.get("first_name", "Друг"))
         return web.json_response({
             "profile": service.serialize_profile(user),
             "meta": {"exercises": game.EXERCISES, "tiers": game.TIERS,
@@ -111,11 +137,22 @@ def routes(storage: Storage) -> web.RouteTableDef:
     @r.post("/api/leaderboard")
     async def lb(request):
         auth, body = await _auth(request)
-        service.get_or_create_user(storage, auth["user"])
+        me = service.get_or_create_user(storage, auth["user"])
         metric = body.get("metric", "level")
-        friends = body.get("friend_ids")
+        scope = body.get("scope", "global")
+        # friends scope: restrict to my friends + me
+        friends = None
+        if scope == "friends":
+            friends = [int(me["user_id"])] + [int(f) for f in me.get("friends", []) if str(f).lstrip("-").isdigit()]
         board = service.leaderboard(storage, metric=metric, friend_ids=friends)
         return web.json_response({"leaderboard": board, "me": auth["user"]["id"]})
+
+    @r.post("/api/friends")
+    async def friends(request):
+        auth, _ = await _auth(request)
+        me = service.get_or_create_user(storage, auth["user"])
+        return web.json_response({"friends": service.friends_list(storage, me),
+                                  "me": me["user_id"]})
 
     @r.post("/api/compare")
     async def compare(request):

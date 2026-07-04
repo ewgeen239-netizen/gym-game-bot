@@ -9,7 +9,10 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 const NEON_CYAN = 0x22d3ee;
 const NEON_MAGENTA = 0xf472b6;
 
-const HERO_URL = new URL('../assets/models/base_basic_shaded.glb', import.meta.url).href;
+const MODEL_URLS = {
+  human: new URL('../assets/models/base_basic_shaded.glb', import.meta.url).href,
+  slime: new URL('../assets/models/slime.glb', import.meta.url).href,
+};
 const DRACO_PATH = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/';
 
 // Display framing (world units). The model is auto-fit to this height and its
@@ -26,10 +29,12 @@ export class GymCharacter {
     this.animPulse = 0;
     this.stats = { strength: 0, endurance: 0, agility: 0 };
     this.muscle = 1;
-    this.level = 1;
+    this.level = 0;
     this.equip = {};
     this.bodyColor = new THREE.Color(NEON_CYAN);
     this.heroReady = false;
+    this.modelType = null;   // 'slime' | 'human'
+    this._loadToken = 0;
 
     // user-controlled rotation (face camera by default, drag to spin 360°)
     this.yaw = 0;
@@ -38,8 +43,13 @@ export class GymCharacter {
     this._fitW = 1;
     this._fitH = DISPLAY_HEIGHT;
 
+    this._loader = new GLTFLoader();
+    const draco = new DRACOLoader();
+    draco.setDecoderPath(DRACO_PATH);
+    this._loader.setDRACOLoader(draco);
+
     this._initScene();
-    this._loadHero();
+    this._loadModel('slime');   // everyone starts as a slime until setStats says otherwise
     this._buildEquipment();
     this._bindDrag();
     this._loop = this._loop.bind(this);
@@ -93,32 +103,35 @@ export class GymCharacter {
     scene.add(grid);
   }
 
-  _loadHero() {
-    const loader = new GLTFLoader();
-    const draco = new DRACOLoader();
-    draco.setDecoderPath(DRACO_PATH);
-    loader.setDRACOLoader(draco);
-    loader.load(
-      HERO_URL,
+  // Load (or swap to) a model type: 'slime' (level 0) or 'human' (level 1+).
+  _loadModel(type) {
+    if (type === this.modelType) return;
+    this.modelType = type;
+    const token = ++this._loadToken;
+    this._loader.load(
+      MODEL_URLS[type],
       (gltf) => {
+        if (token !== this._loadToken) return; // a newer swap superseded this one
         const model = gltf.scene;
         model.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
 
-        // Auto-fit: measure the model, recentre it on its own origin so its
-        // feet sit at the bottom, then scale to a known display height.
+        // Auto-fit: measure, recentre on origin so feet sit at the bottom,
+        // then scale to a known display height.
         const box = new THREE.Box3().setFromObject(model);
         const size = new THREE.Vector3();
         const center = new THREE.Vector3();
         box.getSize(size);
         box.getCenter(center);
-        // shift so X/Z are centred and the feet (box.min.y) sit at y = 0
         model.position.set(-center.x, -box.min.y, -center.z);
 
         const root = new THREE.Group();
         root.add(model);
-        this._fitScale = DISPLAY_HEIGHT / Math.max(0.001, size.y); // base scale
+        this._fitScale = DISPLAY_HEIGHT / Math.max(0.001, size.y);
         this._fitW = size.x * this._fitScale;
         this._fitH = size.y * this._fitScale;
+
+        // remove the previous model, if any
+        if (this.hero) { this.group.remove(this.hero); this._dispose(this.hero); }
         this.hero = root;
         this.group.add(root);
         this.heroReady = true;
@@ -126,8 +139,18 @@ export class GymCharacter {
         this._frame();
       },
       undefined,
-      (err) => console.error('Hero model failed to load:', err)
+      (err) => console.error(`Model "${type}" failed to load:`, err)
     );
+  }
+
+  _dispose(obj) {
+    obj.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        mats.forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
+      }
+    });
   }
 
   // --- Orbiting equipment (procedural, unlocks by level) -------------------
@@ -200,6 +223,9 @@ export class GymCharacter {
       this.bodyColor = new THREE.Color(tier.color);
       if (this.ring) this.ring.material.color.set(tier.color);
     }
+    // slime below level 1, human from level 1 up (tier.model overrides if given)
+    const wantModel = (tier && tier.model) || (this.level >= 1 ? 'human' : 'slime');
+    this._loadModel(wantModel);
     this._applyScale();
     this._showEquipmentForLevel(this.level);
   }

@@ -33,12 +33,13 @@ STATS = ("strength", "endurance", "agility")
 # Evolution tiers — the 3D model visibly grows with the player's level.
 # ---------------------------------------------------------------------------
 TIERS = [
-    {"id": 0, "name": "Новичок",   "min_level": 1,  "muscle": 1.00, "color": "#7dd3fc"},
-    {"id": 1, "name": "Любитель",  "min_level": 5,  "muscle": 1.18, "color": "#38bdf8"},
-    {"id": 2, "name": "Атлет",     "min_level": 10, "muscle": 1.40, "color": "#22d3ee"},
-    {"id": 3, "name": "Про",       "min_level": 20, "muscle": 1.70, "color": "#c084fc"},
-    {"id": 4, "name": "Элита",     "min_level": 35, "muscle": 2.05, "color": "#f472b6"},
-    {"id": 5, "name": "Легенда",   "min_level": 50, "muscle": 2.40, "color": "#facc15"},
+    {"id": 0, "name": "Слизь",     "min_level": 0,  "muscle": 1.00, "color": "#8bf58b", "model": "slime"},
+    {"id": 1, "name": "Новичок",   "min_level": 1,  "muscle": 1.00, "color": "#7dd3fc", "model": "human"},
+    {"id": 2, "name": "Любитель",  "min_level": 5,  "muscle": 1.18, "color": "#38bdf8", "model": "human"},
+    {"id": 3, "name": "Атлет",     "min_level": 10, "muscle": 1.40, "color": "#22d3ee", "model": "human"},
+    {"id": 4, "name": "Про",       "min_level": 20, "muscle": 1.70, "color": "#c084fc", "model": "human"},
+    {"id": 5, "name": "Элита",     "min_level": 35, "muscle": 2.05, "color": "#f472b6", "model": "human"},
+    {"id": 6, "name": "Легенда",   "min_level": 50, "muscle": 2.40, "color": "#facc15", "model": "human"},
 ]
 
 BASE_SET_XP = 12          # base XP per completed set
@@ -48,15 +49,20 @@ STREAK_CAP = 7            # streak multiplier caps at 7 days
 
 
 # --- Level / XP curve -------------------------------------------------------
+# Players start at level 0 (a slime). Reaching level 1 (becoming human) takes a
+# solid chunk of work — a few real workouts — then the curve keeps growing.
+LEVEL1_XP = 250  # XP to evolve from slime (lvl 0) to human (lvl 1)
+
+
 def xp_for_level(level: int) -> int:
     """Total XP needed to *reach* a given level (cumulative)."""
-    if level <= 1:
+    if level <= 0:
         return 0
-    return int(sum(round(80 * (n ** 1.45)) for n in range(1, level)))
+    return int(LEVEL1_XP + sum(round(95 * (n ** 1.42)) for n in range(1, level)))
 
 
 def level_from_xp(total_xp: int) -> int:
-    level = 1
+    level = 0
     while xp_for_level(level + 1) <= total_xp:
         level += 1
     return level

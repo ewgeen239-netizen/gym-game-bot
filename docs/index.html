@@ -118,6 +118,7 @@
         <h2 class="screen-title">Мультиплеер</h2>
         <div class="tabs" id="multiTabs">
           <button class="tab active" data-tab="rank">Рейтинг</button>
+          <button class="tab" data-tab="friends">Друзья</button>
           <button class="tab" data-tab="duels">Дуэли</button>
           <button class="tab" data-tab="clubs">Клубы</button>
           <button class="tab" data-tab="pvp">PvP</button>
@@ -130,6 +131,10 @@
             <button class="ms" data-metric="agility">Ловкость</button>
           </div>
           <div class="board" id="rankBoard"></div>
+        </div>
+        <div class="tab-body hidden" data-tab="friends">
+          <button class="btn ghost" id="inviteBtn2">🔗 Добавить друга (ссылка в боте)</button>
+          <div class="board" id="friendsBoard"></div>
         </div>
         <div class="tab-body hidden" data-tab="duels">
           <button class="btn ghost" id="inviteBtn">🔗 Пригласить друга на дуэль</button>
@@ -171,6 +176,16 @@
       <div class="lu-title glitch" data-text="LEVEL UP">LEVEL UP</div>
       <div class="lu-num" id="luNum">2</div>
       <div class="lu-sub" id="luSub"></div>
+    </div>
+  </div>
+
+  <!-- Slime -> human transformation overlay (over all screens) -->
+  <div id="transform" class="transform hidden">
+    <div class="tf-burst"></div>
+    <div class="tf-core">
+      <div class="tf-emoji" id="tfEmoji">🫧</div>
+      <div class="tf-title glitch" data-text="ПЕРЕВОПЛОЩЕНИЕ">ПЕРЕВОПЛОЩЕНИЕ</div>
+      <div class="tf-sub">Слизь становится человеком…</div>
     </div>
   </div>
 

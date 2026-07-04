@@ -224,3 +224,26 @@ canvas { display: block; }
 .lu-num { font-family: 'Orbitron'; font-weight: 900; font-size: 90px; color: var(--gold); text-shadow: 0 0 30px rgba(250,204,21,.6); animation: pop .5s; }
 @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .lu-sub { color: var(--magenta); letter-spacing: 2px; }
+
+/* Locked nav buttons (level 0 slime) */
+.nav-btn.locked { opacity: .38; }
+.nav-btn.locked::after { content: '🔒'; position: absolute; top: 0; right: 22%; font-size: 9px; filter: none; }
+.nav-btn { position: relative; }
+
+/* Slime -> human transformation overlay */
+.transform { position: fixed; inset: 0; z-index: 985; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, rgba(139,245,139,.18), rgba(4,7,14,.94) 60%); animation: fade .3s; }
+.tf-burst { position: absolute; width: 40px; height: 40px; border-radius: 50%;
+  background: radial-gradient(circle, #8bf58b, #22d3ee 40%, transparent 70%);
+  filter: blur(2px); animation: tfBurst 3.2s ease-out forwards; }
+@keyframes tfBurst {
+  0% { transform: scale(0.2); opacity: .9; }
+  45% { transform: scale(14); opacity: .5; }
+  60% { transform: scale(20); opacity: .15; }
+  100% { transform: scale(28); opacity: 0; }
+}
+.tf-core { position: relative; text-align: center; z-index: 1; }
+.tf-emoji { font-size: 84px; animation: tfPulse 1.5s ease-in-out infinite; filter: drop-shadow(0 0 22px rgba(139,245,139,.8)); }
+@keyframes tfPulse { 0%,100% { transform: scale(1) rotate(-4deg); } 50% { transform: scale(1.22) rotate(4deg); } }
+.tf-title { font-family: 'Orbitron'; font-weight: 900; font-size: 26px; letter-spacing: 3px; color: var(--cyan); margin-top: 12px; }
+.tf-sub { color: var(--magenta); letter-spacing: 1px; margin-top: 6px; }

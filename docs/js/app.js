@@ -60,6 +60,22 @@ function renderAll() {
   renderProgress();
   renderInventory();
   renderQuests();
+  updateLocks();
+}
+
+// At level 0 (slime) only home + training are available; everything else
+// unlocks once you evolve into a human at level 1.
+const LOCKED_AT_L0 = ['progress', 'inventory', 'quests', 'multi'];
+
+function isLocked(view) {
+  return (state.profile?.level ?? 0) < 1 && LOCKED_AT_L0.includes(view);
+}
+
+function updateLocks() {
+  const locked = (state.profile?.level ?? 0) < 1;
+  $$('.nav-btn').forEach((b) => {
+    b.classList.toggle('locked', locked && LOCKED_AT_L0.includes(b.dataset.goto));
+  });
 }
 
 function renderHUD() {
@@ -236,6 +252,11 @@ function updateNavGlider(index = NAV_VIEWS.indexOf(state.activeView || 'home')) 
 }
 
 function goto(name) {
+  if (isLocked(name)) {
+    toast('🔒 Разблокируется на 1 уровне — стань человеком!');
+    updateNavGlider(); // snap glider back to the current view
+    return;
+  }
   state.activeView = name;
   $$('.screen').forEach((s) => s.classList.toggle('active', s.dataset.screen === name));
   $$('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.goto === name));
@@ -314,7 +335,8 @@ async function logWorkout() {
       const a = state.meta.achievements.find((x) => x.id === res.new_achievements[0]);
       setTimeout(() => toast(`🏆 Достижение: ${a ? a.name : ''}`), 1400);
     }
-    if (res.leveled_up) levelUp();
+    if (res.evolved) transform();          // slime -> human
+    else if (res.leveled_up) levelUp();
   } catch (e) {
     toast('Ошибка: ' + e.message);
   } finally {
@@ -334,6 +356,22 @@ function levelUp() {
   setTimeout(() => { overlay.classList.add('hidden'); state.char.play('idle'); }, 2200);
 }
 
+// Fullscreen slime -> human transformation, over all screens.
+function transform() {
+  const overlay = $('#transform');
+  overlay.classList.remove('hidden');
+  state.char.celebrate();
+  tg?.HapticFeedback?.notificationOccurred?.('success');
+  // swap emoji mid-animation for a "reveal" beat
+  setTimeout(() => { $('#tfEmoji').textContent = '🧍'; }, 1500);
+  setTimeout(() => {
+    overlay.classList.add('hidden');
+    $('#tfEmoji').textContent = '🫧';
+    updateLocks();          // everything unlocks now that you're human
+    if (state.activeView !== 'home') goto('home');
+  }, 3200);
+}
+
 // ---------------------------------------------------------------------------
 // Multiplayer
 // ---------------------------------------------------------------------------
@@ -345,6 +383,7 @@ function bindMulti() {
     renderRank();
   }));
   $('#inviteBtn').addEventListener('click', shareInvite);
+  $('#inviteBtn2').addEventListener('click', shareInvite);
   $('#createClubBtn').addEventListener('click', createClub);
 }
 
@@ -352,9 +391,38 @@ function switchTab(tab) {
   $$('#multiTabs .tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
   $$('.tab-body').forEach((b) => b.classList.toggle('hidden', b.dataset.tab !== tab));
   if (tab === 'rank') renderRank();
+  if (tab === 'friends') renderFriends();
   if (tab === 'duels') renderDuels();
   if (tab === 'clubs') renderClubs();
   if (tab === 'pvp') renderPvP();
+}
+
+async function renderFriends() {
+  const board = $('#friendsBoard');
+  board.innerHTML = '<div class="empty">Загрузка…</div>';
+  try {
+    const { friends } = await api.friends();
+    board.innerHTML = '';
+    if (!friends.length) {
+      board.innerHTML = '<div class="empty">Пока нет друзей.<br>Нажми «Добавить друга» — отправь ссылку. Когда друг зайдёт, он появится тут, а тебе придёт сообщение в боте.</div>';
+      return;
+    }
+    friends.forEach((f) => {
+      const el = document.createElement('div');
+      el.className = 'row';
+      el.innerHTML = `<div class="r-name">${f.name}<div class="r-sub">LVL ${f.level} · 💪${f.strength} 🫁${f.endurance} ⚡${f.agility}</div></div>`;
+      const btn = document.createElement('button');
+      btn.className = 'btn primary'; btn.textContent = '⚔️';
+      btn.title = 'Вызвать на дуэль';
+      btn.addEventListener('click', async () => {
+        await api.createDuel(f.user_id);
+        toast('Дуэль отправлена ' + f.name + '!');
+        switchTab('duels');
+      });
+      el.appendChild(btn);
+      board.appendChild(el);
+    });
+  } catch (e) { board.innerHTML = '<div class="empty">Ошибка: ' + e.message + '</div>'; }
 }
 
 async function renderRank() {

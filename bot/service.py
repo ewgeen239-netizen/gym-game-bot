@@ -23,32 +23,53 @@ def default_user(tg_user: dict, referrer_id: str = "") -> dict:
         "username": tg_user.get("username", ""),
         "first_name": tg_user.get("first_name", "Игрок"),
         "created_at": now_iso(),
-        "level": 1, "xp": 0, "total_xp": 0,
+        "level": 0, "xp": 0, "total_xp": 0,   # start as a slime (level 0)
         "strength": 0, "endurance": 0, "agility": 0,
         "streak": 0, "last_workout": "", "total_sets": 0,
         "tier": 0, "skin": "default", "equipment": [], "achievements": [],
         "quests": _blank_quests(), "club_id": "",
-        "referrer_id": referrer_id, "duels_won": 0,
+        "referrer_id": referrer_id, "duels_won": 0, "friends": [],
     }
 
 
+def _add_friend(user: dict, friend_id) -> None:
+    fid = str(friend_id)
+    friends = [str(f) for f in user.get("friends", [])]
+    if fid not in friends and fid != str(user["user_id"]):
+        friends.append(fid)
+    user["friends"] = friends
+
+
 def get_or_create_user(storage: Storage, tg_user: dict, referrer_id: str = "") -> dict:
+    user, _ = get_or_create_user_ex(storage, tg_user, referrer_id)
+    return user
+
+
+def get_or_create_user_ex(storage: Storage, tg_user: dict, referrer_id: str = ""):
+    """Like get_or_create_user but also returns whether a NEW friendship formed
+    via referral (so the caller can notify the referrer in Telegram)."""
     user = storage.get_user(tg_user["id"])
     if user:
-        # keep display fields fresh
         user["username"] = tg_user.get("username", user.get("username", ""))
         user["first_name"] = tg_user.get("first_name", user.get("first_name", "Игрок"))
+        user.setdefault("friends", [])
         _roll_quests(user)
-        return user
+        return user, None
+
     user = default_user(tg_user, referrer_id)
-    storage.save_user(user)
-    # reward the referrer once
+    new_friend_ref = None
     if referrer_id and str(referrer_id) != str(tg_user["id"]):
         ref = storage.get_user(referrer_id)
         if ref:
-            _grant_xp(ref, 150)
+            _grant_xp(ref, 150)                 # referral reward
+            _add_friend(ref, user["user_id"])   # mutual friendship
+            _add_friend(user, ref["user_id"])
             storage.save_user(ref)
-    return user
+            # auto-create an active weekly duel so the friend shows up immediately
+            create_duel(storage, ref["user_id"], user["user_id"], status="active")
+            new_friend_ref = ref
+    storage.save_user(user)
+    return user, new_friend_ref
 
 
 def _roll_quests(user: dict) -> None:
@@ -92,6 +113,7 @@ def serialize_profile(user: dict) -> dict:
         "quests": _quest_view(user),
         "club_id": user.get("club_id", ""),
         "duels_won": user.get("duels_won", 0),
+        "friends": [str(f) for f in user.get("friends", [])],
     }
 
 
@@ -170,7 +192,9 @@ def apply_workout(storage: Storage, user: dict, exercise_id: str,
     q["volume"] += int(weight * reps * sets)
     quest_reward = _settle_quests(user)
 
+    before_level = user["level"]
     leveled = _grant_xp(user, total_xp_gain + quest_reward)
+    evolved = before_level < 1 and user["level"] >= 1  # slime -> human
 
     # achievements
     new_ach = game.check_achievements(user)
@@ -192,7 +216,7 @@ def apply_workout(storage: Storage, user: dict, exercise_id: str,
         "xp_gained": total_xp_gain + quest_reward,
         "set_xp": per_set, "visit_xp": visit_xp, "streak_xp": streak_xp,
         "quest_xp": quest_reward, "stat_gained": {stat: gain},
-        "leveled_up": leveled, "new_achievements": new_ach,
+        "leveled_up": leveled, "evolved": evolved, "new_achievements": new_ach,
         "profile": serialize_profile(user),
     }
 
@@ -242,15 +266,39 @@ def leaderboard(storage: Storage, metric: str = "level", limit: int = 50,
 
 
 # --- Duels ------------------------------------------------------------------
-def create_duel(storage: Storage, challenger_id: int, opponent_id: int) -> dict:
+def create_duel(storage: Storage, challenger_id, opponent_id, status: str = "pending") -> dict:
     duel = {
         "duel_id": new_id(), "challenger_id": challenger_id,
         "opponent_id": opponent_id, "week": game.current_week(),
-        "challenger_xp": 0, "opponent_xp": 0, "status": "pending",
+        "challenger_xp": 0, "opponent_xp": 0, "status": status,
         "created_at": now_iso(),
     }
     storage.save_duel(duel)
+    # challenging someone also makes you friends
+    ch = storage.get_user(challenger_id)
+    op = storage.get_user(opponent_id)
+    if ch and op:
+        _add_friend(ch, opponent_id); _add_friend(op, challenger_id)
+        storage.save_user(ch); storage.save_user(op)
     return duel
+
+
+def friends_list(storage: Storage, user: dict) -> list[dict]:
+    out = []
+    for fid in user.get("friends", []):
+        f = storage.get_user(fid)
+        if not f:
+            continue
+        prog = game.level_progress(int(f.get("total_xp", 0)))
+        out.append({
+            "user_id": f["user_id"],
+            "name": f.get("first_name") or f.get("username") or "Друг",
+            "level": prog["level"], "total_xp": prog["total_xp"],
+            "strength": f.get("strength", 0), "endurance": f.get("endurance", 0),
+            "agility": f.get("agility", 0), "tier": game.tier_for_level(prog["level"])["id"],
+        })
+    out.sort(key=lambda x: x["total_xp"], reverse=True)
+    return out
 
 
 def accept_duel(storage: Storage, duel_id: str, user_id: int) -> dict | None:
