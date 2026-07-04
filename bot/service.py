@@ -109,6 +109,11 @@ def _quest_view(user: dict) -> list[dict]:
 
 
 # --- Workout ----------------------------------------------------------------
+# Input caps (also enforced on the frontend inputs).
+MAX_SETS = 25
+MAX_REPS = 30
+MAX_WEIGHT = 500.0
+
 STAT_GAIN = {
     "strength": lambda sets, reps, weight: round(4 + weight * reps * 0.02),
     "endurance": lambda sets, reps, weight: round(5 + reps * 0.4 + sets * 2),
@@ -122,9 +127,9 @@ def apply_workout(storage: Storage, user: dict, exercise_id: str,
     if not ex:
         raise ValueError("unknown exercise")
 
-    sets = max(1, int(sets))
-    reps = max(1, int(reps))
-    weight = max(0.0, float(weight or 0))
+    sets = min(MAX_SETS, max(1, int(sets)))
+    reps = min(MAX_REPS, max(1, int(reps)))
+    weight = min(MAX_WEIGHT, max(0.0, float(weight or 0)))
     stat = ex["stat"]
 
     _roll_quests(user)
@@ -282,7 +287,18 @@ def duels_for(storage: Storage, user_id: int) -> list[dict]:
 
 
 # --- Clubs ------------------------------------------------------------------
+class ClubLimitError(Exception):
+    """Raised when a user tries to own more than one club."""
+
+
+def owns_club(storage: Storage, user_id) -> bool:
+    return any(str(c.get("owner_id")) == str(user_id) for c in storage.list_clubs())
+
+
 def create_club(storage: Storage, owner: dict, name: str) -> dict:
+    # One club per person: block if they already own one.
+    if owns_club(storage, owner["user_id"]):
+        raise ClubLimitError("У тебя уже есть клуб")
     club = {
         "club_id": new_id(), "name": name[:40] or "Клуб",
         "owner_id": owner["user_id"], "created_at": now_iso(),

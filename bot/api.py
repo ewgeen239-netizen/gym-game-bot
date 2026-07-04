@@ -161,7 +161,10 @@ def routes(storage: Storage) -> web.RouteTableDef:
     async def club_create(request):
         auth, body = await _auth(request)
         me = service.get_or_create_user(storage, auth["user"])
-        club = service.create_club(storage, me, body.get("name", "Клуб"))
+        try:
+            club = service.create_club(storage, me, body.get("name", "Клуб"))
+        except service.ClubLimitError as exc:
+            return web.json_response({"error": str(exc)}, status=409)
         return web.json_response({"club": club})
 
     @r.post("/api/club/join")

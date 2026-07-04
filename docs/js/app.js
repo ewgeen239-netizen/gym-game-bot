@@ -298,9 +298,11 @@ async function logWorkout() {
   if (!state.selected) return;
   const btn = $('#logBtn');
   btn.disabled = true;
-  const sets = +$('#inSets').value || 1;
-  const reps = +$('#inReps').value || 1;
-  const weight = +$('#inWeight').value || 0;
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const sets = clamp(+$('#inSets').value || 1, 1, 25);
+  const reps = clamp(+$('#inReps').value || 1, 1, 30);
+  const weight = clamp(+$('#inWeight').value || 0, 0, 500);
+  $('#inSets').value = sets; $('#inReps').value = reps; $('#inWeight').value = weight;
   try {
     const res = await api.workout(state.selected, sets, reps, weight);
     state.profile = res.profile;
@@ -442,7 +444,14 @@ async function renderClubs() {
 async function createClub() {
   const name = $('#clubName').value.trim();
   if (!name) return;
-  await api.createClub(name);
+  try {
+    await api.createClub(name);
+  } catch (e) {
+    // backend returns 409 with {"error": "..."} when you already own a club
+    const m = /\{"error":\s*"([^"]+)"\}/.exec(e.message);
+    toast(m ? m[1] : 'Можно создать только один клуб');
+    return;
+  }
   const { profile } = await api.profile();
   state.profile = profile;
   $('#clubName').value = '';
