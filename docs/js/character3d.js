@@ -15,10 +15,13 @@ export class GymCharacter {
     this.celebrateT = 0;
     this.stats = { strength: 0, endurance: 0, agility: 0 };
     this.muscle = 1;
+    this.level = 1;
+    this.equip = {};
     this.bodyColor = new THREE.Color(NEON_CYAN);
 
     this._initScene();
     this._buildBody();
+    this._buildEquipment();
     this._loop = this._loop.bind(this);
     this._onResize = this._onResize.bind(this);
     window.addEventListener('resize', this._onResize);
@@ -158,12 +161,78 @@ export class GymCharacter {
     return { pivot, shinPivot, thigh };
   }
 
-  setStats({ strength = 0, endurance = 0, agility = 0, tier } = {}) {
+  // --- Orbiting equipment (ported from the previous build) -----------------
+  // Unlocked gear floats and orbits around the hero on an elliptical path.
+  // Procedural neon meshes — no external .glb assets needed. `level` gates
+  // each piece so gear appears as the player ranks up.
+  _equipmentSpecs() {
+    const gem = (geo, color, emissive = 0.9) =>
+      new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+        color, metalness: 0.7, roughness: 0.25,
+        emissive: new THREE.Color(color), emissiveIntensity: emissive,
+      }));
+    return [
+      { key: 'gloves', level: 2,  make: () => gem(new THREE.OctahedronGeometry(0.16), NEON_MAGENTA),
+        radius: 1.25, depth: 0.5, height: 1.7, speed: 0.7,  phase: Math.PI * 0.1 },
+      { key: 'belt',   level: 4,  make: () => gem(new THREE.TorusGeometry(0.18, 0.06, 10, 20), 0xfacc15),
+        radius: 1.1,  depth: 0.45, height: 1.35, speed: 0.55, phase: Math.PI * 0.8 },
+      { key: 'shoes',  level: 6,  make: () => gem(new THREE.BoxGeometry(0.28, 0.12, 0.4), NEON_CYAN),
+        radius: 1.35, depth: 0.55, height: 0.55, speed: 0.6,  phase: Math.PI * 1.4 },
+      { key: 'tracker',level: 8,  make: () => gem(new THREE.TorusGeometry(0.12, 0.045, 8, 16), NEON_CYAN),
+        radius: 1.0,  depth: 0.4,  height: 2.0, speed: 0.75, phase: Math.PI * 0.45 },
+      { key: 'aura',   level: 10, make: () => {
+          const m = gem(new THREE.IcosahedronGeometry(0.22, 0), NEON_CYAN, 0.5);
+          m.material.wireframe = true; return m;
+        }, radius: 1.5, depth: 0.65, height: 2.15, speed: 0.4, phase: Math.PI * 1.05 },
+      { key: 'hood',   level: 12, make: () => gem(new THREE.ConeGeometry(0.2, 0.34, 6), 0xa855f7),
+        radius: 1.2,  depth: 0.5,  height: 2.3, speed: 0.5,  phase: Math.PI * 0.25 },
+      { key: 'crown',  level: 35, make: () => gem(new THREE.ConeGeometry(0.22, 0.3, 5), 0xfacc15),
+        radius: 0.9,  depth: 0.35, height: 3.35, speed: 0.9, phase: 0 },
+      { key: 'wings',  level: 50, make: () => {
+          const g = new THREE.Group();
+          [-1, 1].forEach((s) => { const w = gem(new THREE.ConeGeometry(0.14, 0.7, 4), NEON_MAGENTA); w.position.x = s * 0.25; w.rotation.z = s * 0.6; g.add(w); });
+          return g;
+        }, radius: 1.6, depth: 0.7, height: 2.0, speed: 0.35, phase: Math.PI },
+    ];
+  }
+
+  _buildEquipment() {
+    this.equipRoot = new THREE.Group();
+    this.scene.add(this.equipRoot); // independent of body turntable
+    this._equipmentSpecs().forEach((spec, i) => {
+      const mesh = spec.make();
+      mesh.visible = false;
+      mesh.userData = { ...spec, seed: i * 0.9 };
+      this.equipRoot.add(mesh);
+      this.equip[spec.key] = mesh;
+    });
+  }
+
+  _showEquipmentForLevel(level) {
+    Object.values(this.equip).forEach((m) => { m.visible = level >= m.userData.level; });
+  }
+
+  _animateEquipment(t) {
+    if (!this.equipRoot) return;
+    Object.values(this.equip).forEach((m) => {
+      if (!m.visible) return;
+      const u = m.userData;
+      const angle = t * u.speed + u.phase;
+      const float = Math.sin(t * 1.35 + u.seed) * 0.06;
+      m.position.set(Math.cos(angle) * u.radius, u.height + float, Math.sin(angle) * u.depth);
+      m.rotation.y = -angle + Math.PI / 2 + t * 0.5;
+      m.rotation.x = Math.sin(t * 0.7 + u.seed) * 0.4;
+    });
+  }
+
+  setStats({ strength = 0, endurance = 0, agility = 0, tier, level } = {}) {
     this.stats = { strength, endurance, agility };
     this.muscle = tier ? tier.muscle : 1;
+    if (typeof level === 'number') this.level = level;
     if (tier && tier.color) this.bodyColor = new THREE.Color(tier.color);
     this._recolor();
     this._applyScale();
+    this._showEquipmentForLevel(this.level);
   }
 
   _recolor() {
@@ -246,6 +315,7 @@ export class GymCharacter {
     const dt = this.clock.getDelta();
     const t = this.clock.elapsedTime;
     this._animate(t);
+    this._animateEquipment(t);
 
     // slow turntable
     this.root.rotation.y += dt * 0.35;

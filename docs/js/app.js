@@ -9,6 +9,7 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const state = {
   profile: null,
   meta: null,
+  activeView: 'home',
   selected: null,
   metric: 'level',
   pvpOther: null,
@@ -47,7 +48,7 @@ async function boot() {
 
 function applyCharacter() {
   const p = state.profile;
-  state.char.setStats({ strength: p.strength, endurance: p.endurance, agility: p.agility, tier: p.tier });
+  state.char.setStats({ strength: p.strength, endurance: p.endurance, agility: p.agility, tier: p.tier, level: p.level });
 }
 
 // ---------------------------------------------------------------------------
@@ -227,16 +228,63 @@ function renderQuests() {
 // ---------------------------------------------------------------------------
 // Navigation
 // ---------------------------------------------------------------------------
+const NAV_VIEWS = ['home', 'train', 'progress', 'inventory', 'quests', 'multi'];
+
+function updateNavGlider(index = NAV_VIEWS.indexOf(state.activeView || 'home')) {
+  const safe = Math.max(0, Math.min(NAV_VIEWS.length - 1, index));
+  document.documentElement.style.setProperty('--nav-index', safe);
+}
+
 function goto(name) {
+  state.activeView = name;
   $$('.screen').forEach((s) => s.classList.toggle('active', s.dataset.screen === name));
   $$('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.goto === name));
+  updateNavGlider();
   if (name === 'progress') renderProgress();
   if (name === 'multi') renderRank();
   tg?.HapticFeedback?.selectionChanged?.();
 }
 
 function bindNav() {
-  $$('[data-goto]').forEach((b) => b.addEventListener('click', () => goto(b.dataset.goto)));
+  // buttons outside the nav (e.g. "Тренироваться") still work as plain links
+  $$('[data-goto]').forEach((b) => {
+    if (!b.closest('#bottomNav')) b.addEventListener('click', () => goto(b.dataset.goto));
+  });
+
+  // draggable bottom nav: glide finger across to switch tabs (ported)
+  const nav = $('#bottomNav');
+  if (!nav) return;
+  let dragging = false;
+
+  const pick = (clientX, commit = false) => {
+    const rect = nav.getBoundingClientRect();
+    const progress = Math.max(0, Math.min(0.999, (clientX - rect.left) / Math.max(1, rect.width)));
+    const index = Math.floor(progress * NAV_VIEWS.length);
+    updateNavGlider(index);
+    if (commit) goto(NAV_VIEWS[index]);
+  };
+
+  nav.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    nav.classList.add('is-dragging');
+    nav.setPointerCapture?.(e.pointerId);
+    pick(e.clientX);
+  });
+  nav.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    e.preventDefault();
+    pick(e.clientX);
+  });
+  const finish = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    nav.classList.remove('is-dragging');
+    nav.releasePointerCapture?.(e.pointerId);
+    pick(e.clientX, true);
+  };
+  nav.addEventListener('pointerup', finish);
+  nav.addEventListener('pointercancel', finish);
+  updateNavGlider(0);
 }
 
 // ---------------------------------------------------------------------------
@@ -405,7 +453,7 @@ async function createClub() {
 async function renderPvP() {
   const me = state.profile;
   if (!state.pvpChars.me) state.pvpChars.me = new GymCharacter($('#pvpMe'));
-  state.pvpChars.me.setStats({ strength: me.strength, endurance: me.endurance, agility: me.agility, tier: me.tier });
+  state.pvpChars.me.setStats({ strength: me.strength, endurance: me.endurance, agility: me.agility, tier: me.tier, level: me.level });
   $('#pvpMeInfo').innerHTML = pvpInfo(me, 'Ты');
 
   const info = $('#pvpOtherInfo');
@@ -414,7 +462,7 @@ async function renderPvP() {
     const { other } = await api.compare(state.pvpOther);
     if (!other) { info.textContent = 'Игрок не найден'; return; }
     if (!state.pvpChars.other) state.pvpChars.other = new GymCharacter($('#pvpOther'));
-    state.pvpChars.other.setStats({ strength: other.strength, endurance: other.endurance, agility: other.agility, tier: other.tier });
+    state.pvpChars.other.setStats({ strength: other.strength, endurance: other.endurance, agility: other.agility, tier: other.tier, level: other.level });
     info.innerHTML = pvpInfo(other, other.first_name) +
       `<button class="btn ghost" style="margin-top:8px;width:100%" id="challengeBtn">⚔️ Вызвать на дуэль</button>`;
     $('#challengeBtn').addEventListener('click', async () => {

@@ -117,7 +117,8 @@ https://ewgeen239-netizen.github.io/gym-game-bot/
 3. Note your bot's **@username**.
 
 ### 2. Google Sheets (recommended storage)
-1. Go to [Google Cloud Console](https://console.cloud.google.com/) → create a project.
+Full step-by-step (with troubleshooting): **[GOOGLE_SHEETS_SETUP.md](GOOGLE_SHEETS_SETUP.md)**. Short version:
+1. [Google Cloud Console](https://console.cloud.google.com/) → create a project.
 2. Enable **Google Sheets API** and **Google Drive API**.
 3. **APIs & Services → Credentials → Create credentials → Service account.**
 4. Open the service account → **Keys → Add key → JSON** → download it.
