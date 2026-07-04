@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GymGame Club</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="scanlines"></div>
+
+  <!-- Loading -->
+  <div id="loader" class="loader">
+    <div class="loader-logo glitch" data-text="GYMGAME">GYMGAME</div>
+    <div class="loader-bar"><span></span></div>
+    <div class="loader-msg" id="loaderMsg">Подключение к нейросети зала…</div>
+  </div>
+
+  <!-- App shell -->
+  <div id="app" class="app hidden">
+    <!-- Top HUD -->
+    <header class="hud">
+      <div class="hud-top">
+        <div class="avatar-badge" id="tierBadge">0</div>
+        <div class="hud-id">
+          <div class="hud-name" id="playerName">Игрок</div>
+          <div class="hud-tier" id="tierName">Новичок</div>
+        </div>
+        <div class="hud-level">
+          <span class="lvl-label">LVL</span>
+          <span class="lvl-num" id="levelNum">1</span>
+        </div>
+      </div>
+      <div class="xpbar">
+        <div class="xpbar-fill" id="xpFill"></div>
+        <div class="xpbar-text" id="xpText">0 / 0 XP</div>
+      </div>
+    </header>
+
+    <!-- Screens -->
+    <main class="screens">
+      <!-- 1. HOME -->
+      <section class="screen active" data-screen="home">
+        <div class="stage">
+          <canvas id="char3d"></canvas>
+          <div class="stage-fx"></div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-chip str"><span class="stat-ico">💪</span><b id="statStr">0</b><small>Сила</small></div>
+          <div class="stat-chip end"><span class="stat-ico">🫁</span><b id="statEnd">0</b><small>Выносл.</small></div>
+          <div class="stat-chip agi"><span class="stat-ico">⚡</span><b id="statAgi">0</b><small>Ловкость</small></div>
+        </div>
+        <div class="home-actions">
+          <button class="btn primary big" data-goto="train">🏋️ Тренироваться</button>
+          <div class="mini-stats">
+            <div>🔥 Стрик: <b id="streakNum">0</b></div>
+            <div>📦 Подходов: <b id="setsNum">0</b></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. TRAIN -->
+      <section class="screen" data-screen="train">
+        <h2 class="screen-title">Тренировка</h2>
+        <div class="ex-grid" id="exGrid"></div>
+        <div class="train-form" id="trainForm">
+          <div class="tf-head" id="tfHead">Выбери упражнение</div>
+          <div class="tf-inputs">
+            <label>Подходы<input type="number" id="inSets" value="3" min="1" max="20" /></label>
+            <label>Повторы<input type="number" id="inReps" value="10" min="1" max="100" /></label>
+            <label>Вес, кг<input type="number" id="inWeight" value="40" min="0" max="500" /></label>
+          </div>
+          <button class="btn primary big" id="logBtn" disabled>Записать подход</button>
+        </div>
+      </section>
+
+      <!-- 3. PROGRESS -->
+      <section class="screen" data-screen="progress">
+        <h2 class="screen-title">Прогресс</h2>
+        <div class="chart-card">
+          <div class="chart-legend">
+            <span class="lg str">Сила</span><span class="lg end">Выносл.</span><span class="lg agi">Ловкость</span>
+          </div>
+          <canvas id="statChart" height="150"></canvas>
+        </div>
+        <h3 class="sub">История</h3>
+        <div class="history-list" id="historyList"></div>
+      </section>
+
+      <!-- 4. INVENTORY -->
+      <section class="screen" data-screen="inventory">
+        <h2 class="screen-title">Экипировка</h2>
+        <div class="inv-grid" id="invGrid"></div>
+      </section>
+
+      <!-- 5. QUESTS -->
+      <section class="screen" data-screen="quests">
+        <h2 class="screen-title">Квесты и достижения</h2>
+        <h3 class="sub">🎯 Ежедневные квесты</h3>
+        <div class="quest-list" id="questList"></div>
+        <h3 class="sub">🏆 Достижения</h3>
+        <div class="ach-grid" id="achGrid"></div>
+      </section>
+
+      <!-- 6. MULTIPLAYER -->
+      <section class="screen" data-screen="multi">
+        <h2 class="screen-title">Мультиплеер</h2>
+        <div class="tabs" id="multiTabs">
+          <button class="tab active" data-tab="rank">Рейтинг</button>
+          <button class="tab" data-tab="duels">Дуэли</button>
+          <button class="tab" data-tab="clubs">Клубы</button>
+          <button class="tab" data-tab="pvp">PvP</button>
+        </div>
+        <div class="tab-body" data-tab="rank">
+          <div class="metric-switch" id="metricSwitch">
+            <button class="ms active" data-metric="level">Уровень</button>
+            <button class="ms" data-metric="strength">Сила</button>
+            <button class="ms" data-metric="endurance">Выносл.</button>
+            <button class="ms" data-metric="agility">Ловкость</button>
+          </div>
+          <div class="board" id="rankBoard"></div>
+        </div>
+        <div class="tab-body hidden" data-tab="duels">
+          <button class="btn ghost" id="inviteBtn">🔗 Пригласить друга на дуэль</button>
+          <div class="board" id="duelBoard"></div>
+        </div>
+        <div class="tab-body hidden" data-tab="clubs">
+          <div class="club-create">
+            <input id="clubName" placeholder="Название клуба" maxlength="40" />
+            <button class="btn primary" id="createClubBtn">Создать</button>
+          </div>
+          <div class="board" id="clubBoard"></div>
+        </div>
+        <div class="tab-body hidden" data-tab="pvp">
+          <div class="pvp-wrap">
+            <div class="pvp-side"><canvas id="pvpMe"></canvas><div id="pvpMeInfo" class="pvp-info"></div></div>
+            <div class="pvp-vs">VS</div>
+            <div class="pvp-side"><canvas id="pvpOther"></canvas><div id="pvpOtherInfo" class="pvp-info">Открой рейтинг и нажми на игрока</div></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="nav">
+      <button class="nav-btn active" data-goto="home"><span>🏠</span>Дом</button>
+      <button class="nav-btn" data-goto="train"><span>🏋️</span>Зал</button>
+      <button class="nav-btn" data-goto="progress"><span>📈</span>Прогресс</button>
+      <button class="nav-btn" data-goto="inventory"><span>🎒</span>Лут</button>
+      <button class="nav-btn" data-goto="quests"><span>🎯</span>Квесты</button>
+      <button class="nav-btn" data-goto="multi"><span>🌐</span>Онлайн</button>
+    </nav>
+  </div>
+
+  <!-- Toast / level-up overlay -->
+  <div id="toast" class="toast"></div>
+  <div id="levelup" class="levelup hidden">
+    <div class="levelup-inner">
+      <div class="lu-title glitch" data-text="LEVEL UP">LEVEL UP</div>
+      <div class="lu-num" id="luNum">2</div>
+      <div class="lu-sub" id="luSub"></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

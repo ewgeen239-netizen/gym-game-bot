@@ -1,5 +1,15 @@
-node_modules/
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Secrets & local data
 .env
-data/
+data/*.json
+!data/.gitkeep
+
+# OS / editors
 .DS_Store
-npm-debug.log*
+*.log
