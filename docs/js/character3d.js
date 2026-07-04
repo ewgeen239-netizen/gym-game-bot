@@ -31,9 +31,17 @@ export class GymCharacter {
     this.bodyColor = new THREE.Color(NEON_CYAN);
     this.heroReady = false;
 
+    // user-controlled rotation (face camera by default, drag to spin 360°)
+    this.yaw = 0;
+    this.dragging = false;
+    this._lastX = 0;
+    this._fitW = 1;
+    this._fitH = DISPLAY_HEIGHT;
+
     this._initScene();
     this._loadHero();
     this._buildEquipment();
+    this._bindDrag();
     this._loop = this._loop.bind(this);
     this._onResize = this._onResize.bind(this);
     window.addEventListener('resize', this._onResize);
@@ -44,9 +52,8 @@ export class GymCharacter {
   _initScene() {
     const scene = new THREE.Scene();
     this.scene = scene;
-    this.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-    this.camera.position.set(0, 0.35, 5.6);
-    this.camera.lookAt(0, 0.15, 0);
+    this.camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+    this.camera.position.set(0, 0, 6);
 
     const renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -110,10 +117,13 @@ export class GymCharacter {
         const root = new THREE.Group();
         root.add(model);
         this._fitScale = DISPLAY_HEIGHT / Math.max(0.001, size.y); // base scale
+        this._fitW = size.x * this._fitScale;
+        this._fitH = size.y * this._fitScale;
         this.hero = root;
         this.group.add(root);
         this.heroReady = true;
         this._applyScale();
+        this._frame();
       },
       undefined,
       (err) => console.error('Hero model failed to load:', err)
@@ -207,36 +217,69 @@ export class GymCharacter {
 
   play(name) {
     this.anim = name;
-    this.animPulse = 1;
   }
 
   celebrate() {
     this.celebrateT = 2.2;
   }
 
+  // Drag anywhere on the canvas to rotate the hero a full 360°.
+  _bindDrag() {
+    const c = this.canvas;
+    const down = (x) => { this.dragging = true; this._lastX = x; };
+    const move = (x) => {
+      if (!this.dragging) return;
+      this.yaw += (x - this._lastX) * 0.01;
+      this._lastX = x;
+    };
+    const up = () => { this.dragging = false; };
+    c.addEventListener('pointerdown', (e) => { c.setPointerCapture?.(e.pointerId); down(e.clientX); });
+    c.addEventListener('pointermove', (e) => move(e.clientX));
+    c.addEventListener('pointerup', up);
+    c.addEventListener('pointercancel', up);
+    c.addEventListener('lostpointercapture', up);
+  }
+
   _loop() {
     const dt = this.clock.getDelta();
     const t = this.clock.elapsedTime;
 
-    // idle turntable + gentle float
-    this.group.rotation.y += dt * 0.4;
-    this.group.position.y = Math.sin(t * 1.4) * 0.05;
+    // face camera by default; user drag sets yaw. Tiny idle sway when idle.
+    const sway = this.dragging ? 0 : Math.sin(t * 0.6) * 0.06;
+    this.group.position.y = Math.sin(t * 1.4) * 0.04;
     this.ring.rotation.z += dt * 0.6;
     this._animateEquipment(t);
 
-    // (no scale pulse — the hero stays a fixed, standard size)
-
     if (this.celebrateT > 0) {
       this.celebrateT -= dt;
-      this.group.rotation.y += dt * 6;
+      this.yaw += dt * 6; // celebratory spin, ends facing wherever it lands
       const flash = Math.abs(Math.sin(this.celebrateT * 12));
       this.ring.scale.setScalar(1 + flash * 0.35);
     } else {
       this.ring.scale.setScalar(1);
     }
+    this.group.rotation.y = this.yaw + sway;
 
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(this._loop);
+  }
+
+  // Pull the camera to whatever distance frames the whole model (both width and
+  // height) with margin — so the hero looks the same size on any screen and
+  // never overflows the stage, regardless of viewport/aspect changes.
+  _frame() {
+    const fov = (this.camera.fov * Math.PI) / 180;
+    const aspect = this.camera.aspect || 1;
+    const margin = 1.28;
+    const h = this._fitH * margin;
+    const w = this._fitW * margin;
+    const distH = (h / 2) / Math.tan(fov / 2);
+    const distW = (w / 2) / (Math.tan(fov / 2) * aspect);
+    const dist = Math.max(distH, distW, 3);
+    const centerY = FEET_Y + this._fitH / 2;
+    this.camera.position.set(0, centerY, dist);
+    this.camera.lookAt(0, centerY, 0);
+    this.camera.updateProjectionMatrix();
   }
 
   _onResize() {
@@ -245,6 +288,6 @@ export class GymCharacter {
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
+    this._frame();
   }
 }

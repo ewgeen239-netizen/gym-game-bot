@@ -87,10 +87,12 @@ canvas { display: block; }
 .screen-title { font-family: 'Orbitron'; font-size: 20px; letter-spacing: 2px; margin: 6px 0 12px; color: var(--text); }
 .sub { font-size: 15px; color: var(--cyan); margin: 18px 0 10px; letter-spacing: 1px; }
 
-/* HOME stage */
-.stage { position: relative; height: 46vh; min-height: 300px; border-radius: 18px; overflow: hidden;
+/* HOME stage — fixed aspect + svh so mobile address-bar changes don't resize it */
+.stage { position: relative; width: 100%; aspect-ratio: 3 / 4; max-height: 52svh; min-height: 300px;
+  border-radius: 18px; overflow: hidden;
   background: radial-gradient(120% 90% at 50% 0%, #16233f 0%, #070c16 70%); border: 1px solid var(--line); }
-#char3d { width: 100%; height: 100%; }
+#char3d { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#char3d:active { cursor: grabbing; }
 .stage-fx { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 -60px 60px -30px rgba(168,85,247,.4), inset 0 60px 60px -30px rgba(34,211,238,.3); }
 
 .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
