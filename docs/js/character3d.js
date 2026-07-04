@@ -194,16 +194,15 @@ export class GymCharacter {
     this._showEquipmentForLevel(this.level);
   }
 
-  // Evolution: the hero grows with tier + strength, but capped so it stays fully
-  // framed, and anchored at the feet so it grows upward from the ring.
+  // Fixed size: the model is always rendered at the same standard scale
+  // (no growth with level/stats), auto-fit to the display height and anchored
+  // at the feet on the ring.
   _applyScale() {
     if (!this.heroReady || !this.hero || !this._fitScale) return;
-    const evo = 1 + Math.min((this.muscle - 1) * 0.22 + this.stats.strength / 2500, 0.32);
-    const s = this._fitScale * evo;
-    this._scaleXZ = s * 1.03;
+    const s = this._fitScale;
     this._scaleY = s;
-    this.hero.scale.set(this._scaleXZ, this._scaleY, this._scaleXZ);
-    this.hero.position.y = FEET_Y; // feet stay on the ring at any scale
+    this.hero.scale.set(s, s, s);
+    this.hero.position.y = FEET_Y;
   }
 
   play(name) {
@@ -225,13 +224,7 @@ export class GymCharacter {
     this.ring.rotation.z += dt * 0.6;
     this._animateEquipment(t);
 
-    // exercise "pulse": a quick squash/bounce on the hero (model is static)
-    if (this.animPulse > 0 && this.hero && this._scaleY) {
-      this.animPulse = Math.max(0, this.animPulse - dt * 1.6);
-      const p = Math.sin((1 - this.animPulse) * Math.PI) * 0.06;
-      this.hero.scale.y = this._scaleY * (1 + p);
-      if (this.animPulse === 0) this.hero.scale.y = this._scaleY; // restore
-    }
+    // (no scale pulse — the hero stays a fixed, standard size)
 
     if (this.celebrateT > 0) {
       this.celebrateT -= dt;
