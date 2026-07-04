@@ -96,6 +96,12 @@ async def run() -> None:
     except Exception as exc:  # non-fatal
         log.warning("Could not set menu button: %s", exc)
 
+    # Drop any leftover webhook / queued updates so polling starts clean.
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+    except Exception as exc:  # non-fatal
+        log.warning("delete_webhook failed: %s", exc)
+
     log.info("Bot polling started.")
     await dp.start_polling(bot, handle_signals=False)
 
