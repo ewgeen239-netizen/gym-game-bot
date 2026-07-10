@@ -25,6 +25,27 @@ EXERCISES = {
     "box_jump":     {"name": "Запрыгивания",    "stat": "agility",   "group": "legs",      "icon": "📦"},
     "kettlebell":   {"name": "Гиря (свинг)",    "stat": "agility",   "group": "full",      "icon": "🔔"},
     "jump_rope":    {"name": "Скакалка",        "stat": "agility",   "group": "cardio",    "icon": "🪢"},
+
+    # --- Day A ---
+    "leg_press":        {"name": "Жим ногами (платформа)",              "stat": "strength",  "group": "legs",  "icon": "🦿"},
+    "lat_pulldown":     {"name": "Тяга верхнего блока широким хватом",   "stat": "strength",  "group": "back",  "icon": "🧲"},
+    "bench_barbell":    {"name": "Жим штанги на горизонтальной скамье",  "stat": "strength",  "group": "chest", "icon": "🏋️"},
+    "triceps_pushdown": {"name": "Разгибание на трицепс в блоке (прямой гриф)", "stat": "strength", "group": "arms", "icon": "🤙"},
+    "db_curl":          {"name": "Подъём гантелей на бицепс",           "stat": "strength",  "group": "arms",  "icon": "💪"},
+
+    # --- Day B ---
+    "assisted_pullup":  {"name": "Подтягивания в гравитроне",           "stat": "strength",  "group": "back",  "icon": "🧗"},
+    "smith_decline":    {"name": "Жим в Смите на наклонной вниз скамье", "stat": "strength", "group": "chest", "icon": "⛓️"},
+    "leg_extension":    {"name": "Разгибание ног в тренажёре (квадрицепс)", "stat": "strength", "group": "legs", "icon": "🦵"},
+    "barbell_curl":     {"name": "Подъём штанги на бицепс",             "stat": "strength",  "group": "arms",  "icon": "💪"},
+    "ball_crunch":      {"name": "Скручивания на фитболе",              "stat": "endurance", "group": "core",  "icon": "🏐"},
+
+    # --- Day C ---
+    "seated_row":       {"name": "Тяга нижнего блока в тренажёре",      "stat": "strength",  "group": "back",  "icon": "🚣"},
+    "incline_chest_machine": {"name": "Жим на верх груди в тренажёре",  "stat": "strength",  "group": "chest", "icon": "🛠️"},
+    "rope_pushdown":    {"name": "Разгибание на трицепс с канатом",     "stat": "strength",  "group": "arms",  "icon": "🪢"},
+    "leg_curl":         {"name": "Сгибание ног в тренажёре (бицепс бедра)", "stat": "strength", "group": "legs", "icon": "🦵"},
+    "hyperextension":   {"name": "Гиперэкстензия",                      "stat": "endurance", "group": "core",  "icon": "🧎"},
 }
 
 STATS = ("strength", "endurance", "agility")
